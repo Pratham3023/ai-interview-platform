@@ -23,6 +23,7 @@ export default function InterviewSession() {
   const [code, setCode] = useState('# Write your solution here\n')
   const [langId, setLangId] = useState(71)
   const [submitting, setSubmitting] = useState(false)
+  const [thinkingMsg, setThinkingMsg] = useState('')
   const [evaluation, setEvaluation] = useState(null)
   const [qNumber, setQNumber] = useState(1)
   const [totalQ] = useState(15)
@@ -96,6 +97,20 @@ export default function InterviewSession() {
     setSubmitting(true)
     if (isListening) { recognitionRef.current?.stop(); setIsListening(false) }
 
+    // Cycle through messages so user knows it's working, not frozen
+    const messages = [
+      '📡 Sending your answer...',
+      '🤖 AI is evaluating your response...',
+      '🧠 Analyzing keywords & concepts...',
+      '✨ Generating next question...',
+    ]
+    let msgIndex = 0
+    setThinkingMsg(messages[0])
+    const msgInterval = setInterval(() => {
+      msgIndex = (msgIndex + 1) % messages.length
+      setThinkingMsg(messages[msgIndex])
+    }, 4000)
+
     try {
       const resp = await interviewAPI.submitAnswer({
         session_id: sessionId,
@@ -124,6 +139,8 @@ export default function InterviewSession() {
     } catch (err) {
       toast.error(err.message || 'Failed to submit answer')
     } finally {
+      clearInterval(msgInterval)
+      setThinkingMsg('')
       setSubmitting(false)
     }
   }
@@ -222,7 +239,7 @@ export default function InterviewSession() {
                 {runningCode ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <><Code size={14} /> Run Code</>}
               </button>
               <button onClick={handleSubmit} disabled={submitting} className="btn btn-primary" style={{ flex: 1 }}>
-                {submitting ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <><CheckCircle size={14} /> Submit</>}
+                {submitting ? <><span className="spinner" style={{ width: 16, height: 16 }} /> {thinkingMsg || 'Submitting...'}</> : <><CheckCircle size={14} /> Submit</>}
               </button>
             </div>
           </div>
@@ -241,7 +258,9 @@ export default function InterviewSession() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
               <span className="text-muted text-xs">{answer.split(/\s+/).filter(Boolean).length} words</span>
               <button onClick={handleSubmit} disabled={submitting || !answer.trim()} className="btn btn-primary">
-                {submitting ? <span className="spinner" style={{ width: 18, height: 18 }} /> : <><Send size={16} /> Submit Answer</>}
+                {submitting
+                  ? <><span className="spinner" style={{ width: 18, height: 18 }} /> <span style={{ fontSize: 13 }}>{thinkingMsg || 'Submitting...'}</span></>
+                  : <><Send size={16} /> Submit Answer</>}
               </button>
             </div>
           </div>

@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Briefcase, ChevronRight, Brain, Clock, BarChart3, AlertCircle } from 'lucide-react'
+import { Briefcase, ChevronRight, Brain, Clock, BarChart3, AlertCircle, Wifi } from 'lucide-react'
 import { interviewAPI } from '../services/api'
+import api from '../services/api'
 import toast from 'react-hot-toast'
 
 const JOB_ROLES = [
@@ -16,6 +17,29 @@ export default function InterviewSetup() {
   const [jobRole, setJobRole] = useState('')
   const [customRole, setCustomRole] = useState('')
   const [starting, setStarting] = useState(false)
+  const [serverReady, setServerReady] = useState(false)
+
+  // Ping backend on mount to wake up Render free tier from cold start
+  useEffect(() => {
+    let warmingToast = null
+    const timer = setTimeout(() => {
+      warmingToast = toast.loading('Warming up server... (first load may take ~30s)', { id: 'warm' })
+    }, 2000)
+
+    api.get('/health', { timeout: 60000 })
+      .then(() => {
+        clearTimeout(timer)
+        toast.dismiss('warm')
+        setServerReady(true)
+      })
+      .catch(() => {
+        clearTimeout(timer)
+        toast.dismiss('warm')
+        setServerReady(true) // proceed anyway
+      })
+
+    return () => clearTimeout(timer)
+  }, [])
 
   const finalRole = jobRole === 'custom' ? customRole : jobRole
 

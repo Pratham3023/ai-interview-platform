@@ -1,0 +1,175 @@
+{
+  "DBMS": [
+    "database", "DBMS", "relational", "normalization", "1NF", "2NF", "3NF", "BCNF",
+    "schema", "entity", "attribute", "primary key", "foreign key", "candidate key",
+    "ER diagram", "entity relationship", "tuple", "relation", "SQL", "query",
+    "transaction", "ACID", "atomicity", "consistency", "isolation", "durability",
+    "concurrency", "deadlock", "lock", "two-phase locking", "index", "B-tree",
+    "B+ tree", "hashing", "join", "inner join", "outer join", "left join", "right join",
+    "view", "trigger", "stored procedure", "cursor", "integrity constraint",
+    "referential integrity", "data redundancy", "functional dependency",
+    "Armstrong axioms", "decomposition", "lossy", "lossless", "projection",
+    "selection", "aggregation", "GROUP BY", "HAVING", "subquery", "correlated subquery",
+    "EXISTS", "IN", "UNION", "INTERSECT", "EXCEPT", "window function", "CTE",
+    "common table expression", "data warehouse", "OLAP", "OLTP", "star schema",
+    "snowflake schema", "fact table", "dimension table", "ETL", "data mart",
+    "NoSQL", "MongoDB", "document store", "key-value", "column-family", "graph database",
+    "CAP theorem", "eventual consistency", "sharding", "replication", "partitioning"
+  ],
+
+  "DSA": [
+    "array", "linked list", "stack", "queue", "deque", "tree", "binary tree",
+    "binary search tree", "BST", "AVL tree", "red-black tree", "heap", "min-heap",
+    "max-heap", "priority queue", "graph", "directed graph", "undirected graph",
+    "weighted graph", "adjacency matrix", "adjacency list", "BFS", "DFS",
+    "breadth-first search", "depth-first search", "topological sort", "shortest path",
+    "Dijkstra", "Bellman-Ford", "Floyd-Warshall", "minimum spanning tree", "Kruskal",
+    "Prim", "dynamic programming", "memoization", "tabulation", "recursion",
+    "divide and conquer", "greedy", "backtracking", "sorting", "bubble sort",
+    "selection sort", "insertion sort", "merge sort", "quick sort", "heap sort",
+    "counting sort", "radix sort", "bucket sort", "binary search", "hashing",
+    "hash table", "hash map", "collision", "chaining", "open addressing",
+    "time complexity", "space complexity", "Big O notation", "O(1)", "O(n)",
+    "O(log n)", "O(n log n)", "O(n^2)", "amortized", "two pointers", "sliding window",
+    "prefix sum", "trie", "segment tree", "Fenwick tree", "bit manipulation",
+    "union-find", "disjoint set", "KMP", "Rabin-Karp", "string matching"
+  ],
+
+  "OS": [
+    "operating system", "process", "thread", "multithreading", "multiprocessing",
+    "concurrency", "parallelism", "process scheduling", "CPU scheduling", "FCFS",
+    "SJF", "round robin", "priority scheduling", "multilevel queue", "preemptive",
+    "non-preemptive", "context switch", "PCB", "process control block", "IPC",
+    "inter-process communication", "pipe", "message queue", "semaphore", "mutex",
+    "monitor", "deadlock", "deadlock prevention", "deadlock avoidance", "banker algorithm",
+    "deadlock detection", "race condition", "critical section", "synchronization",
+    "memory management", "paging", "segmentation", "virtual memory", "page fault",
+    "page replacement", "LRU", "FIFO", "optimal", "thrashing", "working set",
+    "file system", "FAT", "inode", "directory", "file descriptor", "system call",
+    "kernel", "user mode", "kernel mode", "interrupt", "trap", "device driver",
+    "I/O management", "disk scheduling", "SSTF", "SCAN", "C-SCAN", "spooling",
+    "buffering", "caching", "shell", "boot process", "fork", "exec", "wait"
+  ],
+
+  "Computer Networks": [
+    "network", "protocol", "TCP", "UDP", "IP", "HTTP", "HTTPS", "FTP", "SMTP",
+    "DNS", "DHCP", "ARP", "ICMP", "OSI model", "TCP/IP model", "physical layer",
+    "data link layer", "network layer", "transport layer", "session layer",
+    "presentation layer", "application layer", "packet", "frame", "datagram",
+    "encapsulation", "decapsulation", "routing", "switching", "hub", "switch",
+    "router", "gateway", "bridge", "MAC address", "IP address", "IPv4", "IPv6",
+    "subnet", "subnet mask", "CIDR", "NAT", "port", "socket", "connection-oriented",
+    "connectionless", "three-way handshake", "SYN", "ACK", "FIN", "flow control",
+    "congestion control", "sliding window", "bandwidth", "latency", "throughput",
+    "LAN", "WAN", "MAN", "VPN", "firewall", "load balancer", "CDN",
+    "SSL", "TLS", "HTTPS", "RSA", "public key", "private key", "certificate",
+    "cryptography", "symmetric", "asymmetric", "hashing", "digital signature",
+    "WiFi", "Ethernet", "HTTP/2", "WebSocket", "REST", "API", "multiplexing"
+  ],
+
+  "Python": [
+    "Python", "list", "tuple", "dictionary", "set", "string", "integer", "float",
+    "boolean", "None", "variable", "function", "lambda", "class", "object",
+    "inheritance", "polymorphism", "encapsulation", "abstraction", "OOP",
+    "decorator", "generator", "iterator", "comprehension", "list comprehension",
+    "dict comprehension", "set comprehension", "yield", "async", "await",
+    "asyncio", "coroutine", "exception", "try", "except", "finally", "raise",
+    "module", "package", "import", "pip", "virtual environment", "venv",
+    "NumPy", "Pandas", "Matplotlib", "Scikit-learn", "TensorFlow", "PyTorch",
+    "FastAPI", "Flask", "Django", "SQLAlchemy", "pytest", "unittest",
+    "threading", "multiprocessing", "GIL", "global interpreter lock",
+    "context manager", "with", "file handling", "regex", "JSON", "CSV",
+    "dataclass", "namedtuple", "defaultdict", "Counter", "deque",
+    "map", "filter", "reduce", "zip", "enumerate", "sorted", "reversed",
+    "__init__", "__str__", "__repr__", "__len__", "dunder", "magic method",
+    "mutable", "immutable", "shallow copy", "deep copy", "garbage collection"
+  ],
+
+  "Machine Learning": [
+    "machine learning", "supervised learning", "unsupervised learning",
+    "reinforcement learning", "classification", "regression", "clustering",
+    "linear regression", "logistic regression", "decision tree", "random forest",
+    "gradient boosting", "XGBoost", "SVM", "support vector machine", "k-means",
+    "KNN", "k-nearest neighbors", "naive Bayes", "neural network", "deep learning",
+    "CNN", "convolutional neural network", "RNN", "LSTM", "transformer",
+    "attention mechanism", "self-attention", "BERT", "GPT", "LLM",
+    "training", "validation", "testing", "overfitting", "underfitting",
+    "bias", "variance", "regularization", "L1", "L2", "dropout",
+    "cross-validation", "k-fold", "hyperparameter", "grid search",
+    "feature engineering", "feature selection", "PCA", "dimensionality reduction",
+    "precision", "recall", "F1 score", "accuracy", "AUC", "ROC curve",
+    "confusion matrix", "loss function", "gradient descent", "SGD", "Adam",
+    "backpropagation", "activation function", "ReLU", "sigmoid", "softmax",
+    "batch size", "epoch", "learning rate", "normalization", "standardization",
+    "one-hot encoding", "embedding", "transfer learning", "fine-tuning"
+  ],
+
+  "Java": [
+    "Java", "JVM", "JDK", "JRE", "bytecode", "class", "object", "interface",
+    "abstract class", "inheritance", "polymorphism", "encapsulation", "abstraction",
+    "method overloading", "method overriding", "constructor", "static", "final",
+    "this", "super", "ArrayList", "LinkedList", "HashMap", "HashSet", "TreeMap",
+    "Collections", "Iterator", "generics", "autoboxing", "unboxing",
+    "exception handling", "checked exception", "unchecked exception", "throws",
+    "try-with-resources", "lambda", "stream", "functional interface", "Optional",
+    "thread", "runnable", "synchronized", "volatile", "executor service",
+    "garbage collection", "memory management", "heap", "stack",
+    "String", "StringBuilder", "StringBuffer", "immutable",
+    "design patterns", "singleton", "factory", "observer", "decorator",
+    "Spring", "Spring Boot", "Maven", "Gradle", "JUnit", "Mockito",
+    "annotation", "reflection", "serialization", "JDBC", "Hibernate"
+  ],
+
+  "OOP": [
+    "OOP", "object-oriented", "class", "object", "instance", "encapsulation",
+    "inheritance", "polymorphism", "abstraction", "interface", "abstract class",
+    "method", "attribute", "constructor", "destructor", "getter", "setter",
+    "access modifier", "public", "private", "protected", "static",
+    "method overloading", "method overriding", "virtual method",
+    "single inheritance", "multiple inheritance", "multilevel inheritance",
+    "hierarchical inheritance", "hybrid inheritance", "composition", "aggregation",
+    "association", "dependency", "coupling", "cohesion",
+    "SOLID principles", "single responsibility", "open-closed", "Liskov substitution",
+    "interface segregation", "dependency inversion",
+    "design pattern", "creational pattern", "structural pattern", "behavioral pattern",
+    "singleton", "factory method", "abstract factory", "builder", "prototype",
+    "adapter", "bridge", "composite", "decorator", "facade", "flyweight", "proxy",
+    "observer", "strategy", "command", "iterator", "template method", "state"
+  ],
+
+  "Web Development": [
+    "HTML", "CSS", "JavaScript", "React", "Vue", "Angular", "TypeScript",
+    "DOM", "event listener", "fetch", "XMLHttpRequest", "AJAX", "REST API",
+    "HTTP", "GET", "POST", "PUT", "DELETE", "PATCH", "status code",
+    "JSON", "XML", "CORS", "cookie", "session", "localStorage", "sessionStorage",
+    "webpack", "Vite", "Babel", "npm", "yarn", "Node.js", "Express",
+    "component", "props", "state", "hook", "useState", "useEffect", "useContext",
+    "Redux", "Context API", "routing", "React Router", "SPA", "SSR",
+    "responsive design", "flexbox", "grid", "media query", "Bootstrap",
+    "Tailwind", "SASS", "LESS", "CSS variables", "animation", "transition",
+    "accessibility", "SEO", "meta tags", "semantic HTML", "Web Vitals",
+    "GraphQL", "WebSocket", "service worker", "PWA", "OAuth", "JWT"
+  ],
+
+  "FastAPI": [
+    "FastAPI", "Pydantic", "BaseModel", "router", "path parameter", "query parameter",
+    "request body", "response model", "dependency injection", "Depends",
+    "middleware", "CORS", "lifespan", "startup", "shutdown",
+    "async", "await", "asyncio", "uvicorn", "ASGI", "OpenAPI", "Swagger",
+    "OAuth2", "JWT", "bearer token", "APIRouter", "HTTPException",
+    "background tasks", "WebSocket", "file upload", "Form", "File", "UploadFile",
+    "validation", "field", "Optional", "List", "Dict", "status code"
+  ],
+
+  "MongoDB": [
+    "MongoDB", "document", "collection", "database", "BSON", "JSON",
+    "insert", "find", "update", "delete", "aggregate", "pipeline",
+    "match", "group", "project", "sort", "limit", "skip",
+    "index", "compound index", "text index", "geospatial index",
+    "schema", "schema-less", "flexible schema", "embedded document",
+    "array", "ObjectId", "_id", "reference", "population",
+    "replica set", "sharding", "mongos", "config server",
+    "Motor", "PyMongo", "Mongoose", "CRUD", "upsert",
+    "Atlas", "cloud", "transactions", "ACID", "change streams"
+  ]
+}

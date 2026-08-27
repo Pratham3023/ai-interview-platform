@@ -1,0 +1,195 @@
+{
+  "DSA": {
+    "focus": "Data Structures and Algorithms fundamentals",
+    "resources": [
+      {"url": "https://www.youtube.com/watch?v=RBSGKlAvoiM", "type": "video", "title": "Data Structures - Full Course Using C and C++"},
+      {"url": "https://leetcode.com/explore/", "type": "practice", "title": "LeetCode Explore"},
+      {"url": "https://neetcode.io/", "type": "practice", "title": "NeetCode 150 Problems"},
+      {"url": "https://www.geeksforgeeks.org/data-structures/", "type": "article", "title": "GeeksforGeeks DSA"},
+      {"url": "https://visualgo.net/", "type": "article", "title": "VisuAlgo — Algorithm Visualization"}
+    ],
+    "tasks": [
+      "Study arrays and strings — implement common operations",
+      "Practice linked list problems: reverse, detect cycle, merge",
+      "Implement stack and queue from scratch",
+      "Study trees: BST insert, search, traversals (inorder, preorder, postorder)",
+      "Practice BFS and DFS on graphs with adjacency list",
+      "Study sorting algorithms: merge sort, quick sort with implementations",
+      "Practice binary search and its variants",
+      "Study dynamic programming patterns: 0/1 Knapsack, LCS, LIS",
+      "Implement a hash table with collision resolution",
+      "Practice 5 LeetCode medium problems from each category"
+    ]
+  },
+  "DBMS": {
+    "focus": "Database Management Systems theory and practice",
+    "resources": [
+      {"url": "https://www.youtube.com/watch?v=7S_tz1z_5bA", "type": "video", "title": "MySQL Full Course for Beginners"},
+      {"url": "https://www.w3schools.com/sql/", "type": "article", "title": "W3Schools SQL Tutorial"},
+      {"url": "https://www.youtube.com/watch?v=HXV3zeQKqGY", "type": "video", "title": "SQL Full Course - freeCodeCamp"},
+      {"url": "https://sqlzoo.net/", "type": "practice", "title": "SQLZoo Practice"},
+      {"url": "https://leetcode.com/problemset/database/", "type": "practice", "title": "LeetCode Database Problems"}
+    ],
+    "tasks": [
+      "Study normalization: 1NF, 2NF, 3NF, BCNF with examples",
+      "Practice SQL JOINs: INNER, LEFT, RIGHT, FULL OUTER JOIN",
+      "Study ACID properties and transaction management",
+      "Practice SQL aggregate functions: GROUP BY, HAVING, COUNT, SUM",
+      "Study indexing: clustered vs non-clustered, B-tree structure",
+      "Practice subqueries and correlated subqueries",
+      "Study concurrency control: two-phase locking, deadlock prevention",
+      "Learn MongoDB aggregation pipeline",
+      "Practice 10 LeetCode Database problems",
+      "Design an ER diagram for a sample e-commerce database"
+    ]
+  },
+  "OS": {
+    "focus": "Operating Systems concepts and principles",
+    "resources": [
+      {"url": "https://www.youtube.com/watch?v=vBURTt97EkA&list=PLBlnK6fEyqRiVhbXDGLXDk_OQAeuVcp2O", "type": "video", "title": "Operating Systems - Neso Academy"},
+      {"url": "https://www.geeksforgeeks.org/operating-systems/", "type": "article", "title": "GeeksforGeeks OS"},
+      {"url": "https://pages.cs.wisc.edu/~remzi/OSTEP/", "type": "book", "title": "Operating Systems: Three Easy Pieces (Free)"},
+      {"url": "https://www.youtube.com/watch?v=9GDX-IyZ_C8", "type": "video", "title": "Process Management - OS Lectures"}
+    ],
+    "tasks": [
+      "Study process vs thread — creation, lifecycle, PCB structure",
+      "Practice CPU scheduling: draw Gantt charts for FCFS, SJF, Round Robin",
+      "Study deadlock — necessary conditions, prevention, avoidance (Banker's algorithm)",
+      "Study memory management: paging, segmentation, page replacement algorithms",
+      "Implement producer-consumer using semaphores (in code)",
+      "Study virtual memory and page fault handling",
+      "Practice OS MCQs from GATE previous year papers",
+      "Study file systems: FAT, inode structure, directory structure",
+      "Write answers to common OS interview questions",
+      "Study IPC mechanisms: pipes, message queues, shared memory"
+    ]
+  },
+  "Computer Networks": {
+    "focus": "Computer Networks and protocols",
+    "resources": [
+      {"url": "https://www.youtube.com/watch?v=IPvYjXCsTg8", "type": "video", "title": "Computer Networking Full Course - freeCodeCamp"},
+      {"url": "https://www.geeksforgeeks.org/computer-network-tutorials/", "type": "article", "title": "GeeksforGeeks Networking"},
+      {"url": "https://www.youtube.com/watch?v=kDovMCLhlzk&list=PLowKtXNTBypH19whXTVoG3oKSuOcw_XeW", "type": "video", "title": "Ben Eater Networking Playlist"},
+      {"url": "https://computer-networking.info/", "type": "book", "title": "Computer Networking: Principles, Protocols and Practice"}
+    ],
+    "tasks": [
+      "Study OSI model — memorize all 7 layers and their protocols",
+      "Understand TCP vs UDP in detail — when to use each",
+      "Practice subnetting problems with CIDR notation",
+      "Study TCP three-way handshake step by step",
+      "Understand DNS resolution process from browser to server",
+      "Study HTTP/HTTPS — request/response structure, status codes",
+      "Learn how TLS handshake works",
+      "Study routing protocols: OSPF, BGP at a conceptual level",
+      "Practice Networking MCQs from GATE papers",
+      "Study socket programming concepts (TCP socket client-server)"
+    ]
+  },
+  "Python": {
+    "focus": "Python programming and advanced concepts",
+    "resources": [
+      {"url": "https://docs.python.org/3/tutorial/", "type": "article", "title": "Official Python Tutorial"},
+      {"url": "https://www.youtube.com/watch?v=_uQrJ0TkZlc", "type": "video", "title": "Python Full Course - Programming with Mosh"},
+      {"url": "https://realpython.com/", "type": "article", "title": "Real Python Tutorials"},
+      {"url": "https://leetcode.com/", "type": "practice", "title": "LeetCode Python Problems"},
+      {"url": "https://www.py.checkio.org/", "type": "practice", "title": "CheckiO Python Practice"}
+    ],
+    "tasks": [
+      "Master Python data structures: list, dict, set, tuple operations",
+      "Implement 5 decorator examples: timer, cache, retry, log, validate",
+      "Practice generators and iterators — implement a custom iterator class",
+      "Study async/await and asyncio — build a simple async HTTP client",
+      "Study the GIL — understand when to use threading vs multiprocessing",
+      "Implement context managers with __enter__ and __exit__",
+      "Practice list/dict/set comprehensions with complex conditions",
+      "Study Python memory management — reference counting, gc module",
+      "Build a small project using OOP: library system, bank account",
+      "Practice 10 Python LeetCode problems"
+    ]
+  },
+  "Machine Learning": {
+    "focus": "Machine Learning algorithms and concepts",
+    "resources": [
+      {"url": "https://www.coursera.org/learn/machine-learning", "type": "video", "title": "Andrew Ng ML Course"},
+      {"url": "https://scikit-learn.org/stable/tutorial/", "type": "article", "title": "Scikit-learn Tutorials"},
+      {"url": "https://www.youtube.com/watch?v=aircAruvnKk&list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi", "type": "video", "title": "3Blue1Brown Neural Networks"},
+      {"url": "https://kaggle.com/learn", "type": "practice", "title": "Kaggle Learn"},
+      {"url": "https://mlcourse.ai/", "type": "article", "title": "Open Machine Learning Course"}
+    ],
+    "tasks": [
+      "Implement linear and logistic regression from scratch in Python",
+      "Study bias-variance tradeoff with visual examples",
+      "Practice cross-validation on a real dataset from Kaggle",
+      "Implement a decision tree classifier from scratch",
+      "Study evaluation metrics: precision, recall, F1, ROC-AUC",
+      "Build a complete ML pipeline with scikit-learn (preprocessing + model + eval)",
+      "Study gradient descent variants: batch, SGD, Adam",
+      "Implement a neural network with NumPy from scratch",
+      "Study regularization: L1, L2, dropout — implement and compare",
+      "Complete one Kaggle competition notebook"
+    ]
+  },
+  "Java": {
+    "focus": "Java programming and JVM internals",
+    "resources": [
+      {"url": "https://www.youtube.com/watch?v=eIrMbAQSU34", "type": "video", "title": "Java Tutorial for Beginners - Programming with Mosh"},
+      {"url": "https://docs.oracle.com/javase/tutorial/", "type": "article", "title": "Oracle Java Tutorials"},
+      {"url": "https://www.baeldung.com/", "type": "article", "title": "Baeldung Java Guides"},
+      {"url": "https://www.codingbat.com/java", "type": "practice", "title": "CodingBat Java Practice"}
+    ],
+    "tasks": [
+      "Master Java Collections: ArrayList, LinkedList, HashMap, TreeMap, HashSet",
+      "Practice method overloading vs overriding with examples",
+      "Implement common design patterns in Java: Singleton, Factory, Observer",
+      "Study Java concurrency: synchronized, volatile, ExecutorService",
+      "Study Java streams: filter, map, reduce, collect operations",
+      "Implement exception handling: checked vs unchecked exceptions",
+      "Practice Java generics with bounded type parameters",
+      "Study JVM architecture: heap, stack, method area, GC",
+      "Build a simple CRUD application with Java and JDBC",
+      "Practice 10 LeetCode problems in Java"
+    ]
+  },
+  "OOP": {
+    "focus": "Object-Oriented Programming principles and patterns",
+    "resources": [
+      {"url": "https://refactoring.guru/design-patterns", "type": "article", "title": "Refactoring Guru Design Patterns"},
+      {"url": "https://www.youtube.com/watch?v=SiBw7os-_zI", "type": "video", "title": "OOP Concepts Full Course"},
+      {"url": "https://www.youtube.com/watch?v=v9ejT8FO-7I", "type": "video", "title": "Design Patterns in Plain English"}
+    ],
+    "tasks": [
+      "Study all four OOP principles with Java/Python examples",
+      "Implement all five SOLID principles with code examples",
+      "Study and implement 5 Creational patterns: Singleton, Factory, Builder",
+      "Study and implement 5 Structural patterns: Adapter, Decorator, Facade",
+      "Study and implement 5 Behavioral patterns: Observer, Strategy, Command",
+      "Design a system using OOP principles (e.g., a parking lot system)",
+      "Practice explaining OOP concepts in your own words",
+      "Study composition over inheritance with examples",
+      "Implement dependency injection in a small project",
+      "Review common interview OOP questions and practice answers"
+    ]
+  },
+  "Web Development": {
+    "focus": "Frontend and backend web development concepts",
+    "resources": [
+      {"url": "https://developer.mozilla.org/en-US/docs/Learn", "type": "article", "title": "MDN Web Docs Learn"},
+      {"url": "https://react.dev/learn", "type": "article", "title": "Official React Documentation"},
+      {"url": "https://www.youtube.com/watch?v=w7ejDZ8SWv8", "type": "video", "title": "React JS Tutorial - Traversy Media"},
+      {"url": "https://javascript.info/", "type": "article", "title": "The Modern JavaScript Tutorial"},
+      {"url": "https://roadmap.sh/frontend", "type": "article", "title": "Frontend Roadmap"}
+    ],
+    "tasks": [
+      "Review HTML semantics and CSS Flexbox/Grid layouts",
+      "Practice JavaScript ES6+ features: arrow functions, destructuring, spread",
+      "Build a React app with useState, useEffect, and React Router",
+      "Study and implement REST API principles with proper HTTP methods",
+      "Understand event bubbling, capturing, and propagation in the DOM",
+      "Study CORS — why it exists and how to configure it",
+      "Learn JWT authentication flow from frontend to backend",
+      "Practice building a CRUD app with React frontend + FastAPI backend",
+      "Study WebSocket and build a simple real-time chat",
+      "Review common React interview questions"
+    ]
+  }
+}

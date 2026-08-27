@@ -9,6 +9,7 @@ Manages interview session lifecycle:
 """
 
 import uuid
+import time
 from datetime import datetime
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Body
@@ -119,9 +120,11 @@ async def submit_answer(
     current_user=Depends(get_current_user),
 ):
     # Validate session
+    t0 = time.time()
     session = await db.sessions.find_one(
         {"_id": data.session_id, "user_id": current_user["_id"]}
     )
+    logger.info("[TIMING] session lookup: %.2fs", time.time() - t0)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if session["status"] != "active":
@@ -137,7 +140,9 @@ async def submit_answer(
     difficulty = "easy"
 
     if data.question_id != "intro_001" and not data.question_id.startswith("followup_"):
+        t1 = time.time()
         q_doc = await db.questions.find_one({"_id": data.question_id})
+        logger.info("[TIMING] question lookup: %.2fs", time.time() - t1)
         if q_doc:
             expected_keywords = q_doc.get("expected_keywords", [])
             topic = q_doc.get("topic", "General")
@@ -163,6 +168,7 @@ async def submit_answer(
     # ── Evaluate Answer ───────────────────────────────────────────────────────
     # use_llm=False: skip Gemini during live interview to keep response fast.
     # Full LLM feedback is generated separately in /api/feedback/{session_id}/generate
+    t2 = time.time()
     eval_result = await nlp_evaluator.evaluate_answer_full(
         question=question_text,
         answer=data.answer_text,
@@ -171,6 +177,7 @@ async def submit_answer(
         ideal_answer=ideal_answer,
         use_llm=False,
     )
+    logger.info("[TIMING] nlp eval: %.2fs", time.time() - t2)
 
     # ── Prosodic Score ────────────────────────────────────────────────────────
     prosodic_score = 5.0
@@ -243,6 +250,7 @@ async def submit_answer(
         "topic": topic,
     } if q_doc else None
 
+    t3 = time.time()
     next_q, reason = await adaptive_engine.select_next_question(
         redis=redis,
         db=db,
@@ -251,6 +259,7 @@ async def submit_answer(
         missed_keywords=missed if len(missed) >= 2 else [],
         last_question=last_q_dict,
     )
+    logger.info("[TIMING] next question: %.2fs", time.time() - t3)
 
     session_complete = next_q is None
     if session_complete:

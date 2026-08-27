@@ -17,7 +17,12 @@ _redis = None
 async def get_mongo_db() -> AsyncIOMotorDatabase:
     global _mongo_client, _db
     if _db is None:
-        _mongo_client = AsyncIOMotorClient(settings.MONGODB_URI)
+        _mongo_client = AsyncIOMotorClient(
+            settings.MONGODB_URI,
+            serverSelectionTimeoutMS=5000,   # fail fast if can't reach MongoDB
+            connectTimeoutMS=10000,
+            socketTimeoutMS=10000,
+        )
         _db = _mongo_client[settings.MONGODB_DB_NAME]
         logger.info("MongoDB connected: %s / %s", settings.MONGODB_URI, settings.MONGODB_DB_NAME)
     return _db

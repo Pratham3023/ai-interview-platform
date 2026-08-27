@@ -21,15 +21,9 @@ _st_model = None
 
 
 def _get_st_model():
-    global _st_model
-    if _st_model is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-            _st_model = SentenceTransformer("all-MiniLM-L6-v2")
-            logger.info("SentenceTransformer loaded: all-MiniLM-L6-v2")
-        except Exception as e:
-            logger.warning("SentenceTransformer not available: %s", e)
-    return _st_model
+    # Bypassed to prevent memory overload and timeouts on Render Free tier
+    # Gemini LLM is already providing the necessary evaluation.
+    return None
 
 
 # ── 1. Keyword Coverage ───────────────────────────────────────────────────────

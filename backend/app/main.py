@@ -46,13 +46,19 @@ app = FastAPI(
 )
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+cors_kwargs = {
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+
+if "*" in settings.ALLOWED_ORIGINS:
+    cors_kwargs["allow_origins"] = ["*"]
+    cors_kwargs["allow_credentials"] = False
+else:
+    cors_kwargs["allow_origins"] = settings.ALLOWED_ORIGINS
+    cors_kwargs["allow_credentials"] = True
+
+app.add_middleware(CORSMiddleware, **cors_kwargs)
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth_router)

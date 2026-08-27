@@ -80,7 +80,14 @@ Topic: {topic}"""
 
         import asyncio
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, self._call, prompt)
+        try:
+            result = await asyncio.wait_for(
+                loop.run_in_executor(None, self._call, prompt),
+                timeout=30.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Gemini follow-up generation timed out")
+            result = ""
         # Clean up any surrounding quotes
         return result.strip('"\'').strip() or f"Can you explain more about {', '.join(missed_keywords[:2])} in {topic}?"
 
@@ -121,7 +128,14 @@ Return ONLY the JSON object, no other text."""
 
         import asyncio
         loop = asyncio.get_event_loop()
-        raw = await loop.run_in_executor(None, self._call, prompt)
+        try:
+            raw = await asyncio.wait_for(
+                loop.run_in_executor(None, self._call, prompt),
+                timeout=30.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Gemini answer evaluation timed out — using fallback")
+            raw = ""
 
         try:
             # Extract JSON from response
@@ -193,7 +207,14 @@ Return ONLY the JSON object."""
 
         import asyncio
         loop = asyncio.get_event_loop()
-        raw = await loop.run_in_executor(None, self._call, prompt)
+        try:
+            raw = await asyncio.wait_for(
+                loop.run_in_executor(None, self._call, prompt),
+                timeout=30.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Gemini feedback generation timed out — using fallback")
+            raw = ""
 
         try:
             match = re.search(r"\{.*\}", raw, re.DOTALL)
@@ -214,7 +235,14 @@ Return ONLY the JSON object."""
 
         import asyncio
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self._call, prompt)
+        try:
+            return await asyncio.wait_for(
+                loop.run_in_executor(None, self._call, prompt),
+                timeout=30.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Gemini roadmap task generation timed out")
+            return ""
 
     def _default_feedback(self, weak: List[str], strong: List[str], score: float) -> Dict[str, Any]:
         return {

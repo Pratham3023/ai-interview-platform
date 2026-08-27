@@ -24,8 +24,8 @@ pydantic-settings==2.5.2
 
 # AI / NLP
 google-generativeai==0.8.3
-sentence-transformers==3.2.1
-spacy==3.7.6
+# sentence-transformers — removed (not used, pulls PyTorch ~1GB, kills Render free tier)
+# spacy — removed (not imported anywhere in codebase)
 
 # Resume Parsing
 pymupdf==1.24.11        # fitz
@@ -35,15 +35,15 @@ librosa==0.10.2
 soundfile==0.12.1
 numpy==1.26.4
 
-# Computer Vision (optional — comment out if not needed)
-opencv-python-headless==4.10.0.84
+# Computer Vision — removed (not used)
+# opencv-python-headless==4.10.0.84
 
 # Graph / Roadmap
-networkx==3.3
+# networkx — removed (not used)
 
-# ML
-xgboost==2.1.1
-scikit-learn==1.5.2
+# ML — removed (not imported anywhere)
+# xgboost==2.1.1
+# scikit-learn==1.5.2
 
 # HTTP client (for Judge0)
 httpx==0.27.2

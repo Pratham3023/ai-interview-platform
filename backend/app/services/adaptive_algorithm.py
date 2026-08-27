@@ -139,17 +139,18 @@ class AdaptiveInterviewEngine:
             return followup, "follow_up"
 
         # ── Generate follow-up if keywords were missed ───────────────────────
+        # Use template-based follow-up (no Gemini call) to keep response instant.
         if (
             missed_keywords
             and last_question
             and len(missed_keywords) >= 2
             and state["question_count"] < state["total_questions"] - 1
         ):
-            followup_text = await gemini_service.generate_followup_question(
-                original_question=last_question.get("question", ""),
-                candidate_answer="",
-                missed_keywords=missed_keywords,
-                topic=last_question.get("topic", "General"),
+            topic = last_question.get("topic", "General")
+            kw_str = ", ".join(missed_keywords[:3])
+            followup_text = (
+                f"Can you elaborate more on {kw_str} in the context of {topic}? "
+                f"Please provide a more detailed explanation."
             )
             if followup_text:
                 followup_q = {

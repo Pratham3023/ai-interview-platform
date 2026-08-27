@@ -161,13 +161,15 @@ async def submit_answer(
         expected_keywords = ["skills", "experience", "projects", "goals"]
 
     # ── Evaluate Answer ───────────────────────────────────────────────────────
+    # use_llm=False: skip Gemini during live interview to keep response fast.
+    # Full LLM feedback is generated separately in /api/feedback/{session_id}/generate
     eval_result = await nlp_evaluator.evaluate_answer_full(
         question=question_text,
         answer=data.answer_text,
         topic=topic,
         expected_keywords=expected_keywords,
         ideal_answer=ideal_answer,
-        use_llm=bool(settings.GEMINI_API_KEY),
+        use_llm=False,
     )
 
     # ── Prosodic Score ────────────────────────────────────────────────────────

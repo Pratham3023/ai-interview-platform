@@ -91,12 +91,10 @@ export default function InterviewResults() {
   const overallColor = SCORE_COLOR(overall)
 
   const scoreDims = [
-    { label: 'Technical', value: scores.technical_score, color: '#6366f1' },
+    { label: 'Aptitude MCQ', value: scores.aptitude_score, color: '#8b5cf6' },
+    { label: 'Role MCQ', value: scores.role_mcq_score, color: '#ec4899' },
+    { label: 'Adaptive Tech', value: scores.adaptive_score, color: '#6366f1' },
     { label: 'Coding', value: scores.coding_score, color: '#06b6d4' },
-    { label: 'Answer Quality', value: scores.answer_quality_score, color: '#a855f7' },
-    { label: 'Communication', value: scores.communication_score, color: '#10b981' },
-    { label: 'Confidence', value: scores.confidence_indicator, color: '#f59e0b' },
-    { label: 'Keywords', value: scores.keyword_coverage_score, color: '#ec4899' },
   ]
 
   return (

@@ -1,14 +1,11 @@
 """
-Scoring Engine
-Transparent, weighted scoring system. Weights are configurable via env vars.
+Scoring Engine — 4-Phase Interview Scoring
 
-Score dimensions:
-  Technical Knowledge     30%
-  Coding Performance      25%
-  Answer Quality          15%
-  Keyword Coverage        10%
-  Communication           10%
-  Confidence Indicator    10%
+Phase weights:
+  Phase 1 — Aptitude MCQ   : 20%
+  Phase 2 — Role MCQ       : 25%
+  Phase 3 — Adaptive Open  : 30%
+  Phase 4 — Coding         : 25%
 """
 
 import logging
@@ -19,96 +16,81 @@ from app.models import TopicStatus
 
 logger = logging.getLogger(__name__)
 
+# ── Phase weights ──────────────────────────────────────────────────────────────
+WEIGHT_APTITUDE  = 0.20
+WEIGHT_ROLE_MCQ  = 0.25
+WEIGHT_ADAPTIVE  = 0.30
+WEIGHT_CODING    = 0.25
 
 class ScoringEngine:
 
-    # ── Per-Answer Composite Score ────────────────────────────────────────────
+    # ── MCQ Scoring ───────────────────────────────────────────────────────────
 
-    def compute_composite_score(
+    def score_mcq_phase(
         self,
-        keyword_score: float,   # 0-10
-        semantic_score: float,  # 0-10
-        llm_score: float,       # 0-10
-        prosodic_score: float = 5.0,  # 0-10
-    ) -> float:
+        answers: List[Dict[str, Any]],
+        phase: str,          # "aptitude_mcq" or "role_mcq"
+        total_expected: int, # 15
+    ) -> Tuple[float, int]:
         """
-        Weighted composite score per answer (0–10).
-        Weights are fixed per answer; session-level weights applied separately.
+        Returns (score_0_to_100, correct_count).
+        Looks at answers where question_type == phase.
         """
-        # Per-answer: keyword + semantic + llm evenly weighted (prosodic secondary)
-        technical = (keyword_score * 0.35 + semantic_score * 0.35 + llm_score * 0.30)
-        # Blend confidence signal lightly
-        composite = technical * 0.90 + prosodic_score * 0.10
-        return round(min(max(composite, 0.0), 10.0), 2)
+        phase_answers = [a for a in answers if a.get("question_type") == phase]
+        if not phase_answers:
+            return 0.0, 0
 
-    # ── Topic Score Aggregation ───────────────────────────────────────────────
+        correct = sum(1 for a in phase_answers if a.get("is_correct") is True)
+        score = (correct / total_expected) * 100.0
+        return round(score, 2), correct
 
-    def aggregate_topic_scores(
-        self, answers: List[Dict[str, Any]]
-    ) -> Dict[str, float]:
+    # ── Adaptive Scoring ──────────────────────────────────────────────────────
+
+    def score_adaptive_phase(self, answers: List[Dict[str, Any]]) -> float:
         """
-        Average composite scores by topic. Returns {topic: avg_score_0_to_100}.
+        Average composite_score (0–10) of all 'technical' type answers, scaled to 0–100.
         """
-        topic_totals: Dict[str, List[float]] = {}
-        for ans in answers:
-            topic = ans.get("topic", "General")
-            score = ans.get("composite_score", 5.0)
-            topic_totals.setdefault(topic, []).append(score)
+        adaptive = [a for a in answers if a.get("question_type") == "technical"]
+        if not adaptive:
+            return 0.0
+        avg = sum(a.get("composite_score", 0.0) for a in adaptive) / len(adaptive)
+        return round(min(avg * 10.0, 100.0), 2)
 
-        return {
-            topic: round(sum(scores) / len(scores) * 10, 2)  # ×10 → 0–100
-            for topic, scores in topic_totals.items()
-        }
+    # ── Coding Scoring ────────────────────────────────────────────────────────
 
-    # ── Weak/Strong Topic Classification ─────────────────────────────────────
-
-    def classify_topics(
-        self, topic_scores: Dict[str, float]
-    ) -> Tuple[List[str], List[str], Dict[str, str]]:
+    def score_coding_phase(self, answers: List[Dict[str, Any]]) -> float:
         """
-        Returns weak_topics, strong_topics, topic_statuses.
-        Uses configurable thresholds from settings.
+        Average coding_score (0–10) of all 'coding' type answers, scaled to 0–100.
         """
-        weak, strong, statuses = [], [], {}
-        for topic, score in topic_scores.items():
-            if score < settings.THRESHOLD_WEAK:
-                weak.append(topic)
-                statuses[topic] = TopicStatus.WEAK.value
-            elif score < settings.THRESHOLD_NEEDS_IMPROVEMENT:
-                statuses[topic] = TopicStatus.NEEDS_IMPROVEMENT.value
-            else:
-                strong.append(topic)
-                statuses[topic] = TopicStatus.STRONG.value
-        return weak, strong, statuses
+        coding = [a for a in answers if a.get("question_type") == "coding"]
+        if not coding:
+            return 0.0
+        avg = sum(a.get("coding_score", 0.0) for a in coding) / len(coding)
+        return round(min(avg * 10.0, 100.0), 2)
 
-    # ── Session-Level Overall Score ───────────────────────────────────────────
+    # ── Overall Score ─────────────────────────────────────────────────────────
 
     def compute_overall_score(
-        self,
+        self, 
         answers: List[Dict[str, Any]],
         coding_answers: List[Dict[str, Any]],
         prosodic_scores: List[float],
-    ) -> Dict[str, float]:
+    ) -> Dict[str, Any]:
         """
-        Compute all session-level scores using configured weights.
-        All output scores are on 0–100 scale.
+        Compute all phase scores and weighted overall score from session answers.
+        Returns dict ready to $set on the session document.
         """
-        # Technical score: avg of non-coding answers
-        tech_answers = [a for a in answers if a.get("question_type") not in ("coding",)]
-        if tech_answers:
-            technical_score = sum(
-                a.get("composite_score", 0) for a in tech_answers
-            ) / len(tech_answers) * 10
-        else:
-            technical_score = 0.0
+        aptitude_score,   apt_correct  = self.score_mcq_phase(answers, "aptitude_mcq", 15)
+        role_mcq_score,   role_correct = self.score_mcq_phase(answers, "role_mcq",     15)
+        adaptive_score                 = self.score_adaptive_phase(answers)
+        coding_score                   = self.score_coding_phase(answers)
 
-        # Coding score
-        if coding_answers:
-            coding_score = sum(
-                a.get("coding_score", 0) for a in coding_answers
-            ) / len(coding_answers) * 10
-        else:
-            coding_score = technical_score  # fallback to tech if no coding Q
+        overall = (
+            aptitude_score  * WEIGHT_APTITUDE
+            + role_mcq_score  * WEIGHT_ROLE_MCQ
+            + adaptive_score  * WEIGHT_ADAPTIVE
+            + coding_score    * WEIGHT_CODING
+        )
 
         # Keyword coverage
         all_kw_scores = [a.get("keyword_score", 0) for a in answers]
@@ -132,25 +114,66 @@ class ScoringEngine:
             else 50.0  # neutral default
         )
 
-        # Weighted overall (0–100)
-        overall = (
-            technical_score * settings.SCORE_WEIGHT_TECHNICAL
-            + coding_score * settings.SCORE_WEIGHT_CODING
-            + answer_quality * settings.SCORE_WEIGHT_ANSWER_QUALITY
-            + keyword_score * settings.SCORE_WEIGHT_KEYWORD
-            + communication_score * settings.SCORE_WEIGHT_COMMUNICATION
-            + confidence_indicator * settings.SCORE_WEIGHT_CONFIDENCE
-        )
-
         return {
-            "overall_score": round(min(overall, 100.0), 2),
-            "technical_score": round(technical_score, 2),
-            "coding_score": round(coding_score, 2),
-            "keyword_coverage_score": round(keyword_score, 2),
-            "answer_quality_score": round(answer_quality, 2),
-            "communication_score": round(communication_score, 2),
+            "overall_score":      round(min(overall, 100.0), 2),
+            "aptitude_score":     aptitude_score,
+            "aptitude_correct":   apt_correct,
+            "role_mcq_score":     role_mcq_score,
+            "role_mcq_correct":   role_correct,
+            "adaptive_score":     adaptive_score,
+            "coding_score":       coding_score,
+            "technical_score":    adaptive_score,   # alias
+            "communication_score":  round(communication_score, 2),
             "confidence_indicator": round(confidence_indicator, 2),
+            "answer_quality_score": round(answer_quality, 2),
+            "keyword_coverage_score": round(keyword_score, 2),
         }
 
+    # ── Per-Answer Composite (Adaptive Phase) ─────────────────────────────────
+
+    def compute_composite_score(
+        self,
+        keyword_score:  float,
+        semantic_score: float,
+        llm_score:      float,
+        prosodic_score: float = 5.0,
+    ) -> float:
+        """Weighted composite per adaptive answer (0–10)."""
+        technical = keyword_score * 0.35 + semantic_score * 0.35 + llm_score * 0.30
+        composite = technical * 0.90 + prosodic_score * 0.10
+        return round(min(max(composite, 0.0), 10.0), 2)
+
+    # ── Topic Score Aggregation ───────────────────────────────────────────────
+
+    def aggregate_topic_scores(self, answers: List[Dict[str, Any]]) -> Dict[str, float]:
+        """Average composite scores by topic. Returns {topic: avg_score_0_to_100}."""
+        topic_totals: Dict[str, List[float]] = {}
+        for ans in answers:
+            topic = ans.get("topic", "General")
+            score = ans.get("composite_score", 5.0)
+            topic_totals.setdefault(topic, []).append(score)
+
+        return {
+            topic: round(sum(scores) / len(scores) * 10, 2)
+            for topic, scores in topic_totals.items()
+        }
+
+    # ── Weak/Strong Topic Classification ─────────────────────────────────────
+
+    def classify_topics(
+        self, topic_scores: Dict[str, float]
+    ) -> Tuple[List[str], List[str], Dict[str, str]]:
+        """Returns (weak_topics, strong_topics, topic_statuses)."""
+        weak, strong, statuses = [], [], {}
+        for topic, score in topic_scores.items():
+            if score < settings.THRESHOLD_WEAK:
+                weak.append(topic)
+                statuses[topic] = TopicStatus.WEAK.value
+            elif score < settings.THRESHOLD_NEEDS_IMPROVEMENT:
+                statuses[topic] = TopicStatus.NEEDS_IMPROVEMENT.value
+            else:
+                strong.append(topic)
+                statuses[topic] = TopicStatus.STRONG.value
+        return weak, strong, statuses
 
 scoring_engine = ScoringEngine()

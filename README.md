@@ -214,6 +214,4 @@ python -m spacy download en_core_web_sm
 
 ---
 
-## Project: SJB Institute of Technology
-*Adaptive AI-Powered Interview Preparation System with Personalized Learning Roadmap*  
-*Phase 1 Implementation — Academic Year 2025-26*
+

@@ -27,7 +27,7 @@ export default function Dashboard() {
   }, [])
 
   if (loading) return (
-    <div className="page-wrapper" aria-busy="true">
+    <div className="page-wrapper dash" aria-busy="true">
       <div className="skeleton margin-b-8" style={{ height: 34, width: 260 }} />
       <div className="skeleton margin-b-8" style={{ height: 96 }} />
       <div className="grid-2">
@@ -56,7 +56,9 @@ export default function Dashboard() {
   const firstName = user?.full_name?.split(' ')[0]
 
   return (
-    <div className="page-wrapper">
+    <>
+    <div className="ambient" aria-hidden="true"><span /><span /><span /></div>
+    <div className="page-wrapper dash">
       <div className="flex-between page-head" style={{ flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
         <div>
           <h1>{firstName ? `Hello, ${firstName}` : 'Your dashboard'}</h1>
@@ -70,7 +72,7 @@ export default function Dashboard() {
       </div>
 
       {sessions.length === 0 ? (
-        <div className="sheet" style={{ padding: '44px 40px', maxWidth: 640 }}>
+        <div className="sheet glass" style={{ padding: '44px 40px', maxWidth: 640 }}>
           <h2 style={{ marginBottom: 10 }}>Start with your resume</h2>
           <p style={{ marginBottom: 24, maxWidth: '52ch' }}>
             Upload a PDF and pick the role you’re preparing for. You’ll answer 35 questions
@@ -80,7 +82,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="figures margin-b-8">
+          <div className="figures glass margin-b-8">
             {figures.map(f => (
               <div key={f.label} className="figure">
                 <div className="label">{f.label}</div>
@@ -91,7 +93,7 @@ export default function Dashboard() {
 
           <div className="grid-7-5 margin-b-8">
             {latest && (
-              <div className="sheet">
+              <div className="sheet glass">
                 <div className="section-header">
                   <h2 className="section-title">Latest interview</h2>
                   <Link to={`/results/${latest.session_id}`} className="btn btn-secondary btn-sm">View report</Link>
@@ -121,7 +123,7 @@ export default function Dashboard() {
             )}
 
             {radarData.length > 0 && (
-              <div className="sheet">
+              <div className="sheet glass">
                 <h2 className="section-title margin-b-4">Scores by topic</h2>
                 <ResponsiveContainer width="100%" height={230}>
                   <RadarChart data={radarData}>
@@ -135,7 +137,7 @@ export default function Dashboard() {
           </div>
 
           {historyData.length > 1 && (
-            <div className="sheet margin-b-8">
+            <div className="sheet glass margin-b-8">
               <h2 className="section-title margin-b-4">Score over time</h2>
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart data={historyData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
@@ -154,14 +156,14 @@ export default function Dashboard() {
                   <Area
                     type="linear" dataKey="score" stroke="#FF8240" fill="#FF6A2B" fillOpacity={0.1} strokeWidth={2}
                     dot={{ r: 3, fill: '#FF8240', strokeWidth: 0 }}
-                    activeDot={{ r: 6, fill: '#FFB15C', stroke: '#08090B', strokeWidth: 2 }}
+                    activeDot={{ r: 6, fill: '#FFB15C', stroke: '#000000', strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           )}
 
-          <div className="sheet">
+          <div className="sheet glass">
             <div className="section-header">
               <h2 className="section-title">All interviews</h2>
               <span className="label">{sessions.length} total</span>
@@ -193,5 +195,6 @@ export default function Dashboard() {
         </>
       )}
     </div>
+    </>
   )
 }

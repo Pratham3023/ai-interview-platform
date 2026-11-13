@@ -57,7 +57,7 @@ export default function Circuit() {
       </defs>
 
       {/* base traces */}
-      <g fill="none" stroke="#2A2C33" strokeWidth="1.5">
+      <g fill="none" stroke="#1F1F25" strokeWidth="1.5">
         {NODES.map((n, i) => <path key={n.label} d={trace(n, i)} />)}
         {LEGS.map(d => <path key={d} d={d} />)}
       </g>
@@ -77,7 +77,7 @@ export default function Circuit() {
         const w = nodeWidth(n.label)
         return (
           <g key={n.label} transform={`translate(${n.x - w / 2} ${n.y - 28})`}>
-            <rect width={w} height="56" rx="14" fill="#121317" stroke="#2C2E35" />
+            <rect width={w} height="56" rx="14" fill="#0B0B0D" stroke="#26262D" />
             <text x={w / 2} y="35" textAnchor="middle" fill="#D4D4DA" fontSize="21" fontFamily="Geist, system-ui, sans-serif" fontWeight="500">
               {n.label}
             </text>
@@ -87,15 +87,15 @@ export default function Circuit() {
 
       {/* chip */}
       <circle cx={CX} cy={CY} r="130" fill="url(#chipGlow)" />
-      <rect x={CX - CHIP / 2} y={CY - CHIP / 2} width={CHIP} height={CHIP} rx="26" fill="#121317" stroke="url(#chipEdge)" strokeWidth="1.5" />
-      <rect x={CX - CHIP / 2 + 10} y={CY - CHIP / 2 + 10} width={CHIP - 20} height={CHIP - 20} rx="18" fill="#0C0D10" stroke="#24262C" />
+      <rect x={CX - CHIP / 2} y={CY - CHIP / 2} width={CHIP} height={CHIP} rx="26" fill="#0B0B0D" stroke="url(#chipEdge)" strokeWidth="1.5" />
+      <rect x={CX - CHIP / 2 + 10} y={CY - CHIP / 2 + 10} width={CHIP - 20} height={CHIP - 20} rx="18" fill="#050506" stroke="#24262C" />
       {/* the logo's eclipse, inside the chip */}
       <clipPath id="chipClip">
         <rect x={CX - 26} y={CY - 26} width="52" height="52" rx="12" />
       </clipPath>
       <g clipPath="url(#chipClip)">
         <rect x={CX - 26} y={CY - 26} width="52" height="52" fill="#181A1F" />
-        <circle cx={CX} cy={CY + 34} r="34" fill="#08090B" stroke="#FF8240" strokeWidth="3" />
+        <circle cx={CX} cy={CY + 34} r="34" fill="#000000" stroke="#FF8240" strokeWidth="3" />
       </g>
     </svg>
   )

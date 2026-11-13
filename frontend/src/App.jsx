@@ -92,16 +92,16 @@ export default function App() {
           position="top-right"
           toastOptions={{
             style: {
-              background: '#181A1F',
+              background: '#121215',
               color: '#F5F5F4',
-              border: '1px solid #30333A',
+              border: '1px solid #2A2A31',
               borderRadius: '6px',
               fontSize: '14px',
               fontFamily: 'var(--font-sans)',
               boxShadow: '0 12px 30px -10px rgba(0,0,0,0.8)',
             },
-            success: { iconTheme: { primary: '#5BD38A', secondary: '#08090B' } },
-            error: { iconTheme: { primary: '#FF7A6E', secondary: '#08090B' } },
+            success: { iconTheme: { primary: '#5BD38A', secondary: '#000000' } },
+            error: { iconTheme: { primary: '#FF7A6E', secondary: '#000000' } },
           }}
         />
       </BrowserRouter>

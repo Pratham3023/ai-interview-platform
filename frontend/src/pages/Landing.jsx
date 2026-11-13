@@ -1,122 +1,224 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Brain, Mic, Code, BarChart3, Map, ChevronRight, Zap, Shield, Award } from 'lucide-react'
+import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion'
+import { LayoutDashboard, FileText, Map, Settings } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { Wordmark, Turn, Eclipse } from '../components/Marks'
+import Circuit from '../components/Circuit'
 
-const features = [
-  { icon: Brain, title: 'AI-Powered Questions', desc: 'Adaptive questions generated from your resume and skill profile using Gemini AI' },
-  { icon: Mic, title: 'Voice Analysis', desc: 'Prosodic feature analysis measures speaking pace, confidence indicators, and clarity' },
-  { icon: Code, title: 'Live Code Execution', desc: 'Submit code during technical rounds — evaluated instantly via Judge0 API' },
-  { icon: BarChart3, title: 'Multi-Dimensional Scoring', desc: 'Technical, coding, communication, and confidence scores in a transparent breakdown' },
-  { icon: Map, title: 'Personalized Roadmap', desc: 'NetworkX-powered learning plan ordered by prerequisites and deficit severity' },
-  { icon: Zap, title: 'Adaptive Difficulty', desc: 'Question difficulty adjusts in real-time based on your rolling performance score' },
+const STEPS = [
+  { title: 'Upload your resume', body: 'A PDF is enough. We read the skills you list so the questions match what you say you know.' },
+  { title: 'Answer 30 multiple-choice questions', body: '15 on aptitude, then 15 on the role you pick. Jump between them and submit when you’re ready.' },
+  { title: 'Talk through five follow-ups', body: 'Each one is written from where you struggled. Type your answer or say it out loud.' },
+  { title: 'Get your report and study plan', body: 'Scores by phase and topic, what to fix, and a plan that starts with the basics you’re missing.' },
 ]
 
-const stats = [
-  { value: '300+', label: 'Interview Questions' },
-  { value: '11', label: 'Technical Domains' },
-  { value: '7', label: 'Scoring Dimensions' },
-  { value: '100%', label: 'AI-Personalized' },
+const PREVIEW_TOPICS = [
+  { topic: 'Python', score: 82 },
+  { topic: 'DBMS', score: 78 },
+  { topic: 'Operating systems', score: 49, weak: true },
+  { topic: 'Computer networks', score: 41, weak: true },
 ]
+
+const ROLES = [
+  'Software Engineer', 'Backend Developer', 'Frontend Developer', 'Full Stack Developer',
+  'Data Engineer', 'Data Scientist', 'ML Engineer', 'DevOps Engineer',
+  'System Design Engineer', 'Cloud Engineer',
+]
+
+function AppPreview() {
+  return (
+    <div className="app-frame">
+      <div className="app-top">
+        <Wordmark />
+        <span style={{ marginLeft: 12 }}>Report for Backend Developer</span>
+        <span style={{ marginLeft: 'auto' }}>10 Nov 2026</span>
+      </div>
+      <div className="app-body">
+        <nav className="app-side" aria-hidden="true">
+          <span><LayoutDashboard size={16} strokeWidth={1.75} /> Dashboard</span>
+          <span className="is-on"><FileText size={16} strokeWidth={1.75} /> Reports</span>
+          <span><Map size={16} strokeWidth={1.75} /> Study plan</span>
+          <span><Settings size={16} strokeWidth={1.75} /> Settings</span>
+        </nav>
+        <div className="app-main">
+          <div className="app-card" style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
+            <div>
+              <span className="label">The interviewer’s verdict</span>
+              <p style={{ color: 'var(--text)', fontSize: '1.35rem', fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1.25, maxWidth: '24ch' }}>
+                You’re close. Networking and OS are holding you back.
+              </p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div className="verdict-num" style={{ fontSize: '3.6rem' }}>68</div>
+              <div className="verdict-of">out of 100</div>
+            </div>
+          </div>
+          <div className="app-card">
+            <span className="label">Topics, weakest last</span>
+            {PREVIEW_TOPICS.map(t => (
+              <div key={t.topic} className={'bar-row' + (t.weak ? ' is-weak' : '')} style={{ gridTemplateColumns: 'minmax(90px, 1fr) 1.4fr 28px', fontSize: '0.9rem', padding: '6px 0' }}>
+                <span>{t.topic}</span>
+                <div className="bar-track"><div className="bar-fill" style={{ width: `${t.score}%` }} /></div>
+                <span className="bar-value">{t.score}</span>
+              </div>
+            ))}
+          </div>
+          <div className="app-card">
+            <span className="label">Next on your study plan</span>
+            <ol style={{ paddingLeft: '1.2em', display: 'flex', flexDirection: 'column', gap: 8, color: 'var(--text)', fontSize: '0.92rem' }}>
+              <li>OSI and TCP/IP layers</li>
+              <li>TCP congestion control</li>
+              <li>Virtual memory and paging</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Landing() {
+  const { user } = useAuth()
+  const startHref = user ? '/upload' : '/register'
+  const startLabel = user ? 'Start a new interview' : 'Start practising'
+
+  const stageRef = useRef(null)
+  const reduce = useReducedMotion()
+  const { scrollYProgress } = useScroll({ target: stageRef, offset: ['start end', 'start 0.25'] })
+  const rotateX = useTransform(scrollYProgress, [0, 1], [24, 0])
+  const scale   = useTransform(scrollYProgress, [0, 1], [0.9, 1])
+  const y       = useTransform(scrollYProgress, [0, 1], [60, 0])
+  const light   = useTransform(scrollYProgress, [0, 1], [0.25, 1])
+  const frameStyle = reduce ? undefined : { rotateX, scale, y }
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gradient-hero)' }}>
-      {/* Navbar */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', borderBottom: '1px solid var(--color-border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Brain size={28} style={{ color: '#6366f1' }} />
-          <span style={{ fontSize: 20, fontWeight: 700, background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>InterviewAI</span>
-        </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <Link to="/login" className="btn btn-secondary">Login</Link>
-          <Link to="/register" className="btn btn-primary">Get Started</Link>
-        </div>
-      </nav>
-
-      {/* Hero */}
-      <section style={{ textAlign: 'center', padding: '100px 24px 80px', maxWidth: 900, margin: '0 auto' }}>
-        <div className="badge badge-primary" style={{ marginBottom: 24, fontSize: 13 }}>
-          <Zap size={12} /> AI Powered Interviews
-        </div>
-        <h1 style={{ fontSize: 'clamp(36px, 6vw, 72px)', fontWeight: 800, lineHeight: 1.15, marginBottom: 24 }}>
-          Ace Your Next Interview with{' '}
-          <span className="text-gradient">Adaptive AI</span>
-        </h1>
-        <p style={{ fontSize: 18, color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: 40, maxWidth: 600, margin: '0 auto 40px' }}>
-          Upload your resume. Get personalized technical and HR interview questions.
-          Receive multi-dimensional feedback. Build a targeted learning roadmap.
-        </p>
-        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link to="/register" className="btn btn-primary btn-lg">
-            Start Free Interview <ChevronRight size={18} />
-          </Link>
-          <Link to="/login" className="btn btn-secondary btn-lg">
-            Sign In
-          </Link>
-        </div>
-
-        {/* Stats */}
-        <div style={{ display: 'flex', gap: 40, justifyContent: 'center', marginTop: 64, flexWrap: 'wrap' }}>
-          {stats.map(s => (
-            <div key={s.label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 32, fontWeight: 800, background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.value}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>{s.label}</div>
+    <div>
+      {!user && (
+        <header className="site-nav">
+          <div className="container site-nav-inner">
+            <Wordmark />
+            <nav className="site-links" aria-label="Sections">
+              <a href="#how">How it works</a>
+              <a href="#report">The report</a>
+              <a href="#follow-ups">Follow-ups</a>
+              <a href="#roles">Roles</a>
+            </nav>
+            <div className="site-actions">
+              <Link to="/login" className="btn btn-ghost">Sign in</Link>
+              <Link to="/register" className="btn btn-primary">Start free</Link>
             </div>
-          ))}
+          </div>
+        </header>
+      )}
+
+      <section className={'hero2' + (user ? ' under-appnav' : '')}>
+        <div className="hero2-flare" aria-hidden="true" />
+
+        <div className="container hero2-content">
+          <div className="pill"><b>New</b> Follow-up questions that react to your answers</div>
+          <h1>Interview practice that pushes back.</h1>
+          <p className="hero2-lede">
+            Upload your resume and sit a technical interview built around it. Answer well
+            and the questions get harder; struggle and they dig in. Then see exactly what to fix.
+          </p>
+          <div className="hero-actions">
+            <Link to={startHref} className="btn btn-primary btn-lg">{startLabel}</Link>
+            <a href="#how" className="btn btn-secondary btn-lg">See how it works</a>
+          </div>
+        </div>
+
+        <div className="hero2-circuit">
+          <Circuit />
         </div>
       </section>
 
-      {/* Features */}
-      <section style={{ padding: '60px 24px', maxWidth: 1100, margin: '0 auto' }}>
-        <h2 style={{ textAlign: 'center', fontSize: 36, fontWeight: 700, marginBottom: 48 }}>
-          Everything you need to <span className="text-gradient">prepare</span>
-        </h2>
-        <div className="grid-3">
-          {features.map(f => (
-            <div key={f.title} className="card" style={{ transition: 'transform 0.2s ease' }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--color-primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                <f.icon size={22} style={{ color: '#6366f1' }} />
-              </div>
-              <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{f.title}</h3>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{f.desc}</p>
-            </div>
-          ))}
+      <section id="how" className="section">
+        <div className="container">
+          <div className="section-head">
+            <h2>One sitting, start to finish</h2>
+            <p className="section-lede">About 35 questions. Leave whenever you need to; your answers are saved.</p>
+          </div>
+          <ol className="steps">
+            {STEPS.map((s, i) => (
+              <li key={s.title} className="step">
+                <span className="step-num">{i + 1}</span>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
-      {/* Flow */}
-      <section style={{ padding: '60px 24px', textAlign: 'center' }}>
-        <h2 style={{ fontSize: 36, fontWeight: 700, marginBottom: 48 }}>How it <span className="text-gradient">works</span></h2>
-        <div style={{ display: 'flex', gap: 0, justifyContent: 'center', flexWrap: 'wrap', maxWidth: 900, margin: '0 auto' }}>
-          {['Upload Resume', 'Start Interview', 'AI Evaluates', 'Get Roadmap'].map((step, i) => (
-            <div key={step} style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ textAlign: 'center', padding: '0 20px' }}>
-                <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, margin: '0 auto 12px' }}>{i + 1}</div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{step}</div>
-              </div>
-              {i < 3 && <ChevronRight size={20} style={{ color: 'var(--text-muted)' }} />}
-            </div>
-          ))}
+      <section id="report" className="showcase">
+        <div className="container section-head center">
+          <h2>Then you get the report</h2>
+          <p className="section-lede">A straight verdict, scores by topic, and a study plan that starts with the basics.</p>
+        </div>
+        <Eclipse />
+        <div className="stage" ref={stageRef} aria-label="Preview of an interview report">
+          <motion.div className="stage-light" style={reduce ? undefined : { opacity: light }} aria-hidden="true" />
+          <div className="container">
+            <motion.div style={frameStyle}>
+              <AppPreview />
+            </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section style={{ padding: '80px 24px', textAlign: 'center' }}>
-        <div className="card" style={{ maxWidth: 600, margin: '0 auto', padding: '48px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)' }}>
-          <Award size={40} style={{ color: '#6366f1', marginBottom: 20 }} />
-          <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 16 }}>Ready to ace your interviews?</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 28 }}>Join thousands of candidates who have improved their interview performance with AI-powered personalized practice.</p>
-          <Link to="/register" className="btn btn-primary btn-lg btn-full">
-            Get Started — It's Free <ChevronRight size={18} />
-          </Link>
+      <section id="follow-ups" className="section" style={{ paddingTop: 0 }}>
+        <div className="container split">
+          <div>
+            <h2>Follow-ups that react to what you said</h2>
+            <p>
+              The last five questions aren’t from a fixed list. Each one is written from
+              your previous answer and from the topics you found hardest in the
+              multiple-choice rounds.
+            </p>
+            <p>
+              Get one right and the next goes deeper. Miss something and it comes back
+              to it from another angle, the way a real interviewer would.
+            </p>
+          </div>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-label="Example exchange">
+            <Turn who="them" level={2}>Your resume mentions PostgreSQL. Two transactions update the same row and one update is lost. What happened?</Turn>
+            <Turn who="you">Both read the old value before either wrote, so the second overwrote the first. I’d lock the row with SELECT … FOR UPDATE.</Turn>
+            <Turn who="them" level={3}>Good. Now say you can’t hold locks that long. What catches it instead?</Turn>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer style={{ borderTop: '1px solid var(--color-border)', padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-        <p>© 2025 InterviewAI · SJB Institute of Technology</p>
+      <section id="roles" className="section" style={{ paddingTop: 0 }}>
+        <div className="container">
+          <div className="section-head center">
+            <h2>Built for the role you want</h2>
+            <p className="section-lede">Role questions and follow-ups change with your pick. Not listed? Type your own.</p>
+          </div>
+          <ul className="role-list">
+            {ROLES.map(r => <li key={r}>{r}</li>)}
+          </ul>
+        </div>
+      </section>
+
+      <section className="closing">
+        <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+          <h2>Make your next interview a rehearsal.</h2>
+          <p>Free. All you need is a PDF of your resume.</p>
+          <Link to={startHref} className="btn btn-primary btn-lg">{startLabel}</Link>
+        </div>
+        <Eclipse />
+      </section>
+
+      <footer className="landing-footer">
+        <div className="container landing-footer-inner">
+          <Wordmark />
+          <nav aria-label="Legal">
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/terms">Terms</Link>
+          </nav>
+          <span>© 2026 InterviewAI</span>
+        </div>
       </footer>
     </div>
   )

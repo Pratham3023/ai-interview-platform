@@ -98,14 +98,27 @@ class RoadmapGenerator:
         3. Allocate weeks per severity
         4. Populate with daily tasks from knowledge base
         """
-        if not weak_topics:
-            return []
-
-        kb = _load_kb()
+    def _resolve_topics(
+        self,
+        weak_topics: List[str],
+        job_role: str = "Software Engineer",
+    ) -> List[str]:
+        """Collect and topologically sort topics to cover."""
+        active_weak = list(weak_topics)
+        if not active_weak:
+            role_lower = job_role.lower()
+            if "frontend" in role_lower:
+                active_weak = ["Web Development", "JavaScript", "React"]
+            elif "data" in role_lower or "ai" in role_lower or "machine" in role_lower:
+                active_weak = ["Python", "Machine Learning", "DBMS"]
+            elif "devops" in role_lower or "cloud" in role_lower:
+                active_weak = ["OS", "Computer Networks", "Python"]
+            else:
+                active_weak = ["DSA", "DBMS", "OS"]
 
         # Collect all nodes needed: weak topics + their prerequisites
-        needed_nodes = set(weak_topics)
-        for topic in weak_topics:
+        needed_nodes = set(active_weak)
+        for topic in active_weak:
             if topic in self._dag:
                 ancestors = nx.ancestors(self._dag, topic)
                 needed_nodes.update(ancestors)
@@ -116,6 +129,51 @@ class RoadmapGenerator:
             ordered = list(nx.topological_sort(subgraph))
         except nx.NetworkXUnfeasible:
             ordered = list(needed_nodes)
+        return ordered
+
+    def get_ordered_topics(
+        self,
+        topic_scores: Dict[str, float],
+        weak_topics: List[str],
+        job_role: str = "Software Engineer",
+    ) -> List[Dict[str, Any]]:
+        """Return the topologically ordered list of topics with resources for DAG display."""
+        ordered = self._resolve_topics(weak_topics, job_role)
+        kb = _load_kb()
+
+        results = []
+        for topic in ordered:
+            score = topic_scores.get(topic, 50.0)
+            severity, _ = _get_severity(score)
+            topic_kb = kb.get(topic, {})
+            raw_res = topic_kb.get("resources", [])
+            resources = [
+                {
+                    "title": r.get("title", f"{topic} Resource"),
+                    "url": r.get("url", "#"),
+                    "type": r.get("type", "article"),
+                }
+                for r in raw_res
+            ]
+            results.append({
+                "topic": topic,
+                "domain": topic,
+                "severity": severity,
+                "resources": resources,
+            })
+        return results
+
+    def generate(
+        self,
+        topic_scores: Dict[str, float],
+        weak_topics: List[str],
+        job_role: str = "Software Engineer",
+    ) -> List[WeekPlan]:
+        """
+        Generate a prerequisite-ordered, severity-weighted roadmap.
+        """
+        ordered = self._resolve_topics(weak_topics, job_role)
+        kb = _load_kb()
 
         # Assign scores (prerequisites get their topic score if known, else 50)
         def get_score(t: str) -> float:
@@ -126,8 +184,8 @@ class RoadmapGenerator:
 
         for topic in ordered:
             score = get_score(topic)
-            if score >= 75:
-                continue  # skip strong topics
+            if score >= 80 and weak_topics and topic not in weak_topics:
+                continue  # skip strong prerequisite topics if candidate already mastered them
 
             severity, num_weeks = _get_severity(score)
             topic_kb = kb.get(topic, {})

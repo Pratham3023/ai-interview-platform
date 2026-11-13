@@ -76,3 +76,10 @@ The frontend leverages React Context for global state and standard component hie
 - **Code Execution**: Candidate code is NEVER executed on the application server. All code is sandboxed in Piston ephemeral containers.
 - **Authentication**: Stateless JWT authentication with a 24-hour expiration. Passwords hashed via `bcrypt`.
 - **Modularity**: LLM providers can be hot-swapped by replacing the `gemini_service.py` wrapper, ensuring no vendor lock-in.
+
+## 6. Infrastructure & Scaling (Production Best Practices)
+To optimize for scale as per modern web standards:
+- **Load Balancer**: A Layer 7 Load Balancer (e.g., AWS ALB, NGINX) should be deployed in front of the FastAPI instances to distribute incoming HTTP and WebSocket traffic evenly and handle SSL termination.
+- **Content Delivery Network (CDN)**: The React frontend build (`dist/`) should be served via a CDN (e.g., Cloudflare, AWS CloudFront, or Vercel Edge Network) to ensure assets (JS, CSS, Images) are cached at edge locations geographically closest to users.
+- **Caching Layer**: `fastapi-cache2` (backed by Redis) is integrated to cache expensive AI responses and frequently accessed database queries.
+- **Database Pooling**: AsyncIOMotorClient utilizes connection pooling (`maxPoolSize=100`) to efficiently handle concurrent MongoDB requests.

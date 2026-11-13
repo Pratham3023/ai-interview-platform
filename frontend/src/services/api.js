@@ -38,7 +38,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('access_token')
       localStorage.removeItem('user')
-      window.location.href = '/login'
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        window.location.href = '/login'
+      }
     }
 
     return Promise.reject(new Error(message))
@@ -71,7 +73,7 @@ export const resumeAPI = {
     })
   },
   getResume: (resumeId) => api.get(`/api/resume/${resumeId}`),
-  listResumes: () => api.get('/api/resume/'),
+  listResumes: () => api.get('/api/resume'),
 }
 
 // ── Interview API ──────────────────────────────────────────────────────────
@@ -80,8 +82,9 @@ export const interviewAPI = {
   start: (resumeId, jobRole) =>
     api.post('/api/interview/start', { resume_id: resumeId, job_role: jobRole }),
   submitAnswer: (data) => api.post('/api/interview/answer', data),
+  submitBatchAnswers: (data) => api.post('/api/interview/batch-answers', data),
   getSession: (sessionId) => api.get(`/api/interview/${sessionId}`),
-  listSessions: () => api.get('/api/interview/'),
+  listSessions: () => api.get('/api/interview'),
 }
 
 // ── Coding API ─────────────────────────────────────────────────────────────
@@ -110,12 +113,13 @@ export const feedbackAPI = {
 export const roadmapAPI = {
   generate: (sessionId) => api.post(`/api/roadmap/${sessionId}/generate`),
   getRoadmap: (sessionId) => api.get(`/api/roadmap/${sessionId}`),
+  get: (sessionId) => api.get(`/api/roadmap/${sessionId}`),
 }
 
 // ── Dashboard API ──────────────────────────────────────────────────────────
 
 export const dashboardAPI = {
-  getDashboard: () => api.get('/api/dashboard/'),
+  getDashboard: () => api.get('/api/dashboard'),
 }
 
 export default api

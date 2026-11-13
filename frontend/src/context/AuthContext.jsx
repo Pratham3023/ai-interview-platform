@@ -1,5 +1,5 @@
 /**
- * Auth Context — provides user state globally
+ * Auth Context - provides user state globally
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react'

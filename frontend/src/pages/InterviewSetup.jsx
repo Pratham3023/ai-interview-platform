@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Briefcase, ChevronRight, Brain, Clock, BarChart3, AlertCircle, Wifi } from 'lucide-react'
-import { interviewAPI } from '../services/api'
-import api from '../services/api'
+import api, { interviewAPI } from '../services/api'
 import toast from 'react-hot-toast'
 
 const JOB_ROLES = [
@@ -14,105 +12,115 @@ const JOB_ROLES = [
 export default function InterviewSetup() {
   const { resumeId } = useParams()
   const navigate = useNavigate()
-  const [jobRole, setJobRole] = useState('')
+  const [jobRole, setJobRole]       = useState('')
   const [customRole, setCustomRole] = useState('')
-  const [starting, setStarting] = useState(false)
+  const [starting, setStarting]     = useState(false)
   const [serverReady, setServerReady] = useState(false)
 
-  // Ping backend on mount to wake up Render free tier from cold start
   useEffect(() => {
     let warmingToast = null
     const timer = setTimeout(() => {
-      warmingToast = toast.loading('Warming up server... (first load may take ~30s)', { id: 'warm' })
+      warmingToast = toast.loading('Waking up the interview server. This can take up to a minute…', { id: 'warm' })
     }, 2000)
-
     api.get('/health', { timeout: 60000 })
-      .then(() => {
-        clearTimeout(timer)
-        toast.dismiss('warm')
-        setServerReady(true)
-      })
-      .catch(() => {
-        clearTimeout(timer)
-        toast.dismiss('warm')
-        setServerReady(true) // proceed anyway
-      })
-
+      .then(() => { clearTimeout(timer); toast.dismiss('warm'); setServerReady(true) })
+      .catch(() => { clearTimeout(timer); toast.dismiss('warm'); setServerReady(true) })
     return () => clearTimeout(timer)
   }, [])
 
   const finalRole = jobRole === 'custom' ? customRole : jobRole
 
   const handleStart = async () => {
-    if (!finalRole) return toast.error('Please select a job role')
+    if (!finalRole) return toast.error('Pick a role first')
     setStarting(true)
     try {
       const data = await interviewAPI.start(resumeId, finalRole)
-      toast.success('Interview started! Answer naturally.')
-      navigate(`/interview/${data.session_id}`, { state: { firstQuestion: data.first_question } })
+      toast.success('Interview started')
+      navigate(`/interview/${data.session_id}`, {
+        replace: true,
+        state: { firstQuestion: data.first_question, allNavigableQuestions: data.all_navigable_questions },
+      })
     } catch (err) {
-      toast.error(err.message || 'Failed to start interview')
+      toast.error(err.message || 'Couldn’t start the interview. Try again.')
     } finally {
       setStarting(false)
     }
   }
 
   return (
-    <div style={{ padding: '40px 24px', maxWidth: 680, margin: '0 auto' }}>
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Interview Setup</h1>
-        <p className="text-secondary">Configure your mock interview session. Questions will be tailored to your resume and chosen role.</p>
+    <div className="page-wrapper-md">
+      <ol className="flow-steps" aria-label="Interview setup">
+        <li className="is-done">Resume</li>
+        <li aria-current="step">Role</li>
+        <li>Interview</li>
+      </ol>
+
+      <div className="page-head">
+        <h1>Which role are you preparing for?</h1>
+        <p>The second set of questions, and the follow-ups, are written for this role.</p>
       </div>
 
-      {/* Role Selection */}
-      <div className="card" style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Briefcase size={20} style={{ color: '#6366f1' }} /> Target Job Role
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
+      <fieldset className="sheet" style={{ marginBottom: 24 }}>
+        <legend className="visually-hidden">Target role</legend>
+        <div className="role-grid">
           {JOB_ROLES.map(r => (
-            <button key={r} onClick={() => setJobRole(r)}
-              style={{ padding: '10px 16px', borderRadius: 10, border: `1px solid ${jobRole === r ? '#6366f1' : 'var(--color-border)'}`, background: jobRole === r ? 'var(--color-primary-glow)' : 'rgba(255,255,255,0.03)', color: jobRole === r ? '#a5b4fc' : 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s ease', textAlign: 'left' }}>
+            <button
+              key={r}
+              type="button"
+              className="choice"
+              aria-pressed={jobRole === r}
+              onClick={() => setJobRole(r)}
+            >
+              <span className="choice-dot" aria-hidden="true" />
               {r}
             </button>
           ))}
-          <button onClick={() => setJobRole('custom')}
-            style={{ padding: '10px 16px', borderRadius: 10, border: `1px solid ${jobRole === 'custom' ? '#6366f1' : 'var(--color-border)'}`, background: jobRole === 'custom' ? 'var(--color-primary-glow)' : 'rgba(255,255,255,0.03)', color: jobRole === 'custom' ? '#a5b4fc' : 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: 'pointer', textAlign: 'left' }}>
-            ✏️ Custom Role
+          <button
+            type="button"
+            className="choice"
+            aria-pressed={jobRole === 'custom'}
+            onClick={() => setJobRole('custom')}
+          >
+            <span className="choice-dot" aria-hidden="true" />
+            Something else
           </button>
         </div>
+
         {jobRole === 'custom' && (
-          <input className="form-input" placeholder="e.g. Site Reliability Engineer"
-            value={customRole} onChange={e => setCustomRole(e.target.value)} autoFocus />
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="grid-3" style={{ marginBottom: 28 }}>
-        {[
-          { icon: Brain, label: 'Adaptive AI', desc: 'Questions adapt based on your answers in real-time' },
-          { icon: Clock, label: '15 Questions', desc: 'Including 1 coding challenge via Judge0' },
-          { icon: BarChart3, label: 'Full Scoring', desc: 'Technical, coding, communication & confidence' },
-        ].map(item => (
-          <div key={item.label} className="card" style={{ padding: 16 }}>
-            <item.icon size={18} style={{ color: '#6366f1', marginBottom: 8 }} />
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{item.label}</div>
-            <div className="text-secondary" style={{ fontSize: 12 }}>{item.desc}</div>
+          <div className="form-group" style={{ marginTop: 18 }}>
+            <label className="form-label" htmlFor="custom-role">Role title</label>
+            <input
+              id="custom-role"
+              className="form-input"
+              placeholder="e.g. Site Reliability Engineer"
+              value={customRole}
+              onChange={e => setCustomRole(e.target.value)}
+              autoFocus
+            />
           </div>
-        ))}
+        )}
+      </fieldset>
+
+      <div className="sheet session-outline" style={{ marginBottom: 28 }}>
+        <h2 className="section-title" style={{ marginBottom: 12 }}>What you’ll answer</h2>
+        <ol>
+          <li><strong>15 aptitude questions.</strong> Multiple choice, any order.</li>
+          <li><strong>15 role questions.</strong> Multiple choice on {finalRole || 'your chosen role'}.</li>
+          <li><strong>5 follow-ups.</strong> Written answers, aimed at whatever you found hardest. You can speak instead of typing.</li>
+        </ol>
       </div>
 
-      {/* Note */}
-      <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', marginBottom: 24, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <AlertCircle size={16} style={{ color: '#f59e0b', marginTop: 2, flexShrink: 0 }} />
-        <p style={{ fontSize: 13, color: '#fcd34d', lineHeight: 1.5 }}>
-          The interview will begin with <strong>"Introduce Yourself"</strong>. Speak clearly and naturally. Your voice characteristics will be analyzed as a confidence indicator (not a clinical assessment).
-        </p>
-      </div>
-
-      <button onClick={handleStart} disabled={!finalRole || starting} className="btn btn-primary btn-lg btn-full">
-        {starting ? <span className="spinner" style={{ width: 20, height: 20 }} /> : <><Brain size={20} /> Begin Interview <ChevronRight size={18} /></>}
+      <button
+        onClick={handleStart}
+        disabled={!finalRole || starting}
+        className="btn btn-primary btn-lg"
+        style={{ minWidth: 220 }}
+      >
+        {starting ? <><span className="spinner" /> Starting…</> : 'Start interview'}
       </button>
+      {!serverReady && (
+        <p className="form-hint" style={{ marginTop: 10 }}>Connecting to the interview server…</p>
+      )}
     </div>
   )
 }

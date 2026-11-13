@@ -5,7 +5,6 @@ from app.config import settings
 
 # Override settings to ensure we don't try to connect to non-existent APIs if we don't have keys yet
 settings.GEMINI_API_KEY = "test_key"
-settings.JUDGE0_API_KEY = "test_key"
 
 from app.database import get_mongo_db, get_redis, close_mongo, close_redis
 from app.services.skill_extraction import resume_parser

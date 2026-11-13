@@ -53,31 +53,76 @@ class QuestionResponse(BaseModel):
     topic: str
     subtopic: Optional[str] = None
     difficulty: str
-    type: str
+    type: str                           # aptitude_mcq | role_mcq | technical | coding
     expected_keywords: List[str] = []
     requires_code: bool = False
     language_hint: Optional[str] = None
+    # MCQ-specific
+    options: List[str] = []            # ["A) ...", "B) ...", "C) ...", "D) ..."]
+    # Progress metadata
+    phase: str = ""                    # aptitude_mcq | role_mcq | adaptive | coding
+    phase_label: str = ""              # Human-readable phase name
+    q_in_phase: int = 0               # 1-indexed position within current phase
+    total_in_phase: int = 0           # total questions in current phase
+    overall_progress: int = 0         # 0-based count of questions answered so far
+    test_cases: List[Dict[str, Any]] = [] # For coding questions
+    starter_code: Optional[str] = None
+    method_name: Optional[str] = None
 
 
 class StartInterviewResponse(BaseModel):
     session_id: str
     first_question: QuestionResponse
+    total_questions: int = 37
     message: str = "Interview started"
+    # All navigable questions (Phase 1 MCQ + Phase 2 MCQ + Coding) sent up-front
+    # so the frontend can build the question palette without extra round-trips.
+    all_navigable_questions: List[QuestionResponse] = []
 
 
 class SubmitAnswerRequest(BaseModel):
     session_id: str
     question_id: str
-    answer_text: str
+    answer_text: str                          # text answer OR code for coding phase
+    selected_option: Optional[str] = None     # MCQ only: "A" | "B" | "C" | "D"
+    language: Optional[str] = "python"        # coding phase only
     is_follow_up: bool = False
     follow_up_of: Optional[str] = None
-    audio_features: Optional[Dict[str, Any]] = None
+    audio_features: Optional[Dict[str, Any]] = None  # kept for future voice analysis
 
 
 class SubmitAnswerResponse(BaseModel):
-    evaluation: Dict[str, Any]
+    evaluation: Dict[str, Any]           # varies by phase; never contains correct_option for MCQs
     next_question: Optional[QuestionResponse]
     session_complete: bool
+    message: str = ""
+    phase: str = ""
+    phase_label: str = ""
+    overall_progress: int = 0            # how many questions answered (0-37)
+
+
+# ── Batch Answer (for navigable phases: aptitude_mcq, role_mcq, coding) ──────
+
+class SingleAnswerPayload(BaseModel):
+    question_id: str
+    answer_text: str = ""
+    selected_option: Optional[str] = None   # MCQ: "A" | "B" | "C" | "D"
+    language: Optional[str] = "python"      # coding phase only
+
+
+class BatchAnswerRequest(BaseModel):
+    session_id: str
+    phase: str                              # "aptitude_mcq" | "role_mcq" | "coding"
+    answers: List[SingleAnswerPayload]
+
+
+class BatchAnswerResponse(BaseModel):
+    phase: str
+    submitted: int
+    next_phase: str                         # phase to proceed to next
+    next_phase_label: str = ""
+    first_adaptive_question: Optional[QuestionResponse] = None  # set when transitioning to adaptive
+    session_complete: bool = False
     message: str = ""
 
 
@@ -107,12 +152,25 @@ class CodeSubmitResponse(BaseModel):
 class ScoreResponse(BaseModel):
     session_id: str
     overall_score: float
-    technical_score: float
-    coding_score: float
-    communication_score: float
-    confidence_indicator: float
-    answer_quality_score: float
-    keyword_coverage_score: float
+
+    # Phase-level scores (0–100)
+    aptitude_score: float = 0.0
+    aptitude_correct: int = 0
+    aptitude_total: int = 15
+
+    role_mcq_score: float = 0.0
+    role_mcq_correct: int = 0
+    role_mcq_total: int = 15
+
+    adaptive_score: float = 0.0
+    coding_score: float = 0.0
+
+    # Legacy / topic breakdown
+    technical_score: float = 0.0
+    communication_score: float = 0.0
+    confidence_indicator: float = 0.0
+    answer_quality_score: float = 0.0
+    keyword_coverage_score: float = 0.0
     topic_scores: Dict[str, float] = {}
     topic_statuses: Dict[str, str] = {}
     weak_topics: List[str] = []
@@ -150,13 +208,27 @@ class WeekPlanSchema(BaseModel):
     daily_tasks: List[DailyTaskSchema] = []
 
 
+class TopicResourceSchema(BaseModel):
+    title: str
+    url: str
+    type: str = "article"
+
+
+class OrderedTopicSchema(BaseModel):
+    topic: str
+    domain: str
+    severity: str = "moderately_weak"
+    resources: List[TopicResourceSchema] = []
+
+
 class RoadmapResponse(BaseModel):
     roadmap_id: str
     session_id: str
     job_role: str
     weak_topics: List[str]
-    weeks: List[WeekPlanSchema]
-    total_weeks: int
+    weeks: List[WeekPlanSchema] = []
+    total_weeks: int = 0
+    ordered_topics: List[OrderedTopicSchema] = []
     generated_at: datetime
 
 
@@ -180,3 +252,6 @@ class DashboardResponse(BaseModel):
     best_score: float
     average_score: float
     most_improved_topic: Optional[str] = None
+
+
+

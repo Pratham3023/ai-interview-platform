@@ -1,87 +1,204 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
-import { Mic, MicOff, Send, Code, ChevronRight, CheckCircle, Volume2 } from 'lucide-react'
+import {
+  Mic, MicOff, Send, Code, CheckCircle, Volume2,
+  ChevronRight, ChevronLeft, LayoutGrid, Brain, Terminal, Briefcase, Cpu
+} from 'lucide-react'
 import { interviewAPI, codingAPI, scoringAPI } from '../services/api'
 import Editor from '@monaco-editor/react'
 import toast from 'react-hot-toast'
+import AudioWaveform from '../components/AudioWaveform'
 
-const DIFFICULTY_COLOR = { easy: '#10b981', medium: '#f59e0b', hard: '#ef4444' }
-const TYPE_BADGE = { technical: { label: 'Technical', color: '#6366f1' }, coding: { label: 'Coding', color: '#06b6d4' }, behavioral: { label: 'Behavioral', color: '#a855f7' }, intro: { label: 'Introduction', color: '#10b981' } }
+// ── Constants ──────────────────────────────────────────────────────────────────
+
+// Feature toggle: Coding evaluation temporarily paused for improvements (code preserved)
+const ENABLE_CODING_PHASE = false
+
+const DIFFICULTY_COLOR = { easy: 'var(--success)', medium: 'var(--warning)', hard: 'var(--danger)' }
+const TYPE_BADGE = {
+  aptitude_mcq: { label: 'Aptitude',       color: 'var(--brand-orange)', icon: Brain },
+  role_mcq:     { label: 'Role Knowledge', color: 'var(--brand-amber)',  icon: Briefcase },
+  technical:    { label: 'Technical',      color: 'var(--brand-jade)',   icon: Cpu },
+  coding:       { label: 'Coding',         color: 'var(--success)',      icon: Code },
+}
+const PHASE_META = {
+  aptitude_mcq: { label: 'Aptitude' },
+  role_mcq:     { label: 'Role questions' },
+  coding:       { label: 'Coding' },
+  adaptive:     { label: 'Follow-ups' },
+}
 
 const LANGUAGE_IDS = [
-  { id: 71, name: 'Python' }, { id: 62, name: 'Java' }, { id: 54, name: 'C++' },
-  { id: 50, name: 'C' }, { id: 63, name: 'JavaScript' },
+  { id: 71, name: 'Python',     lang: 'python'     },
+  { id: 62, name: 'Java',       lang: 'java'       },
+  { id: 54, name: 'C++',        lang: 'cpp'        },
+  { id: 50, name: 'C',          lang: 'c'          },
+  { id: 63, name: 'JavaScript', lang: 'javascript' },
 ]
+
+function getLangName(langId) {
+  return LANGUAGE_IDS.find(l => l.id === langId)?.lang || 'python'
+}
+
+// ── Memoized Editor ────────────────────────────────────────────────────────────
+const MemoizedEditor = memo(({ code, langId, onChange }) => (
+  <div style={{ borderRadius: 6, overflow: 'hidden', marginBottom: 16, border: '1px solid var(--rule)' }}>
+    <Editor height="320px" defaultLanguage="python"
+      language={getLangName(langId)}
+      value={code} onChange={onChange} theme="vs-dark"
+      options={{ fontSize: 14, minimap: { enabled: false }, lineNumbers: 'on', scrollBeyondLastLine: false, fontFamily: 'var(--font-mono)' }} />
+  </div>
+))
+
+// ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function InterviewSession() {
   const { sessionId } = useParams()
-  const { state } = useLocation()
+  const { state: routeState } = useLocation()
   const navigate = useNavigate()
 
-  const [currentQ, setCurrentQ] = useState(state?.firstQuestion || null)
-  const [answer, setAnswer] = useState('')
-  const [code, setCode] = useState('# Write your solution here\n')
-  const [langId, setLangId] = useState(71)
-  const [submitting, setSubmitting] = useState(false)
-  const [thinkingMsg, setThinkingMsg] = useState('')
-  const [evaluation, setEvaluation] = useState(null)
-  const [qNumber, setQNumber] = useState(1)
-  const [totalQ] = useState(15)
-  const [isListening, setIsListening] = useState(false)
-  const [codeResult, setCodeResult] = useState(null)
-  const [runningCode, setRunningCode] = useState(false)
-  const recognitionRef = useRef(null)
-  const answerRef = useRef(null)
+  // All navigable questions from backend (Phase 1 + 2 + Coding)
+  const [navigableQuestions, setNavigableQuestions] = useState(
+    routeState?.allNavigableQuestions || []
+  )
+  const [currentQ, setCurrentQ]           = useState(routeState?.firstQuestion || null)
+  const [sessionPhase, setSessionPhase]   = useState('aptitude_mcq')
+  const [paletteOpen, setPaletteOpen]     = useState(true)
 
-  // Web Speech API
+  // Local answer state keyed by question_id
+  const [localAnswers, setLocalAnswers]   = useState({})
+
+  // Current question inputs
+  const [selectedOption, setSelectedOption] = useState('')
+  const [answer, setAnswer]               = useState('')
+  const [code, setCode]                   = useState(routeState?.firstQuestion?.starter_code || '# Write your solution here\n')
+  const [langId, setLangId]               = useState(71)
+  const [codeResult, setCodeResult]       = useState(null)
+
+  // Adaptive
+  const [adaptiveQ, setAdaptiveQ]         = useState(null)
+  const [adaptiveIdx, setAdaptiveIdx]     = useState(0)
+
+  // UI
+  const [activeTestCase, setActiveTestCase] = useState(0)
+  const [submitting, setSubmitting]       = useState(false)
+  const [runningCode, setRunningCode]     = useState(false)
+  const [thinkingMsg, setThinkingMsg]     = useState('')
+  const [isListening, setIsListening]     = useState(false)
+  const recognitionRef = useRef(null)
+
+  // ── Block Browser Back Button ────────────────────────────────────────────────
+  useEffect(() => {
+    const handlePopState = () => {
+      window.history.pushState(null, '', window.location.pathname)
+      toast.error("Back navigation is disabled during the interview.")
+    }
+    window.history.pushState(null, '', window.location.pathname)
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  // ── Session Recovery on Refresh or Direct Navigation ───────────────────────
+  useEffect(() => {
+    if ((!navigableQuestions || navigableQuestions.length === 0) && sessionId) {
+      interviewAPI.getSession(sessionId)
+        .then(data => {
+          if (data?.all_navigable_questions && data.all_navigable_questions.length > 0) {
+            setNavigableQuestions(data.all_navigable_questions)
+            if (!currentQ) {
+              setCurrentQ(data.first_question || data.all_navigable_questions[0])
+            }
+          } else if (data?.current_question && !currentQ) {
+            setCurrentQ(data.current_question)
+          }
+        })
+        .catch(err => {
+          console.error('Failed to restore session:', err)
+        })
+    }
+  }, [sessionId, navigableQuestions, currentQ])
+
+  // ── Speech Recognition ───────────────────────────────────────────────────────
+
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-      const recognition = new SR()
-      recognition.continuous = true
-      recognition.interimResults = true
-      recognition.onresult = (e) => {
-        const transcript = Array.from(e.results).map(r => r[0].transcript).join('')
-        setAnswer(transcript)
+      const r = new SR()
+      r.continuous = true
+      r.interimResults = true
+      r.onresult = (e) => {
+        const t = Array.from(e.results).map(x => x[0].transcript).join('')
+        setAnswer(t)
       }
-      recognition.onerror = () => setIsListening(false)
-      recognition.onend = () => setIsListening(false)
-      recognitionRef.current = recognition
+      r.onerror = () => setIsListening(false)
+      r.onend   = () => setIsListening(false)
+      recognitionRef.current = r
     }
     return () => recognitionRef.current?.stop()
   }, [])
 
   const toggleListening = () => {
-    if (!recognitionRef.current) return toast.error('Speech recognition not supported in this browser')
+    if (!recognitionRef.current) return toast.error('Speech not supported')
     if (isListening) { recognitionRef.current.stop(); setIsListening(false) }
-    else { recognitionRef.current.start(); setIsListening(true); toast.success('Listening...') }
+    else             { recognitionRef.current.start(); setIsListening(true); toast.success('Listening...') }
   }
 
   const speakQuestion = (text) => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel()
-      const utt = new SpeechSynthesisUtterance(text)
-      utt.rate = 0.9
-      window.speechSynthesis.speak(utt)
+      const u = new SpeechSynthesisUtterance(text)
+      u.rate = 0.9
+      window.speechSynthesis.speak(u)
     }
   }
 
   useEffect(() => {
-    if (currentQ?.question) speakQuestion(currentQ.question)
-  }, [currentQ])
+    if (currentQ?.question && sessionPhase === 'adaptive') speakQuestion(currentQ.question)
+  }, [currentQ?.id, sessionPhase])
+
+  // ── Save current answer to local map ─────────────────────────────────────────
+
+  const saveCurrentAnswerLocally = useCallback(() => {
+    if (!currentQ) return
+    setLocalAnswers(prev => ({
+      ...prev,
+      [currentQ.id]: { selectedOption, answer, code, langId, codeResult }
+    }))
+  }, [currentQ, selectedOption, answer, code, langId, codeResult])
+
+  // ── Navigate to a question ────────────────────────────────────────────────────
+
+  const navigateToQuestion = useCallback((q) => {
+    saveCurrentAnswerLocally()
+    const saved = localAnswers[q.id]
+    setSelectedOption(saved?.selectedOption || '')
+    setAnswer(saved?.answer || '')
+    setCode(saved?.code || q.starter_code || '# Write your solution here\n')
+    setLangId(saved?.langId || 71)
+    setCodeResult(saved?.codeResult || null)
+    setActiveTestCase(0)
+    setCurrentQ(q)
+  }, [saveCurrentAnswerLocally, localAnswers])
+
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+
+  const handleCodeChange = useCallback((v) => {
+    setCode(v || '')
+  }, [])
 
   const handleRunCode = async () => {
     setRunningCode(true)
     setCodeResult(null)
     try {
       const result = await codingAPI.submit({
-        session_id: sessionId,
-        question_id: currentQ.id,
-        code,
-        language_id: langId,
-        stdin: '',
+        session_id: sessionId, question_id: currentQ.id,
+        code, language_id: langId, stdin: '',
       })
       setCodeResult(result)
+      setLocalAnswers(prev => ({
+        ...prev,
+        [currentQ.id]: { ...(prev[currentQ.id] || {}), code, langId, codeResult: result }
+      }))
       toast.success(`Code executed: ${result.status}`)
     } catch (err) {
       toast.error(err.message)
@@ -90,181 +207,497 @@ export default function InterviewSession() {
     }
   }
 
-  const handleSubmit = async () => {
-    const finalAnswer = currentQ?.requires_code ? (codeResult?.stdout || code.slice(0, 200)) : answer
-    if (!finalAnswer.trim() && !currentQ?.requires_code) return toast.error('Please provide an answer')
+  // ── Batch submit ──────────────────────────────────────────────────────────────
+
+  const handleBatchSubmit = async (phase) => {
+    saveCurrentAnswerLocally()
+
+    const getPhaseAnswers = (p) => {
+      const phaseQs = navigableQuestions.filter(q => q.phase === p)
+      return phaseQs.map(q => {
+        const saved = q.id === currentQ?.id
+          ? { selectedOption, answer, code, langId, codeResult }
+          : (localAnswers[q.id] || {})
+
+        if (p === 'coding') {
+          return { question_id: q.id, answer_text: saved.code || '', language: getLangName(saved.langId || 71) }
+        }
+        return { question_id: q.id, answer_text: '', selected_option: saved.selectedOption ? saved.selectedOption[0] : null }
+      })
+    }
 
     setSubmitting(true)
-    if (isListening) { recognitionRef.current?.stop(); setIsListening(false) }
-
-    // Cycle through messages so user knows it's working, not frozen
-    const messages = [
-      '📡 Sending your answer...',
-      '🤖 AI is evaluating your response...',
-      '🧠 Analyzing keywords & concepts...',
-      '✨ Generating next question...',
-    ]
-    let msgIndex = 0
-    setThinkingMsg(messages[0])
-    const msgInterval = setInterval(() => {
-      msgIndex = (msgIndex + 1) % messages.length
-      setThinkingMsg(messages[msgIndex])
-    }, 4000)
+    const msgs = ['Submitting answers...', 'Evaluating...', 'Loading next phase...']
+    let mi = 0
+    setThinkingMsg(msgs[0])
+    const iv = setInterval(() => { mi = (mi + 1) % msgs.length; setThinkingMsg(msgs[mi]) }, 2000)
 
     try {
-      const resp = await interviewAPI.submitAnswer({
-        session_id: sessionId,
-        question_id: currentQ.id,
-        answer_text: finalAnswer || answer || '[Code submitted]',
-        is_follow_up: currentQ.is_follow_up || false,
-        follow_up_of: currentQ.follow_up_of || null,
-      })
-
-      setEvaluation(resp.evaluation)
+      let resp;
+      if (phase === 'all_mcqs') {
+        await interviewAPI.submitBatchAnswers({ session_id: sessionId, phase: 'aptitude_mcq', answers: getPhaseAnswers('aptitude_mcq') })
+        resp = await interviewAPI.submitBatchAnswers({ session_id: sessionId, phase: 'role_mcq', answers: getPhaseAnswers('role_mcq') })
+      } else {
+        resp = await interviewAPI.submitBatchAnswers({ session_id: sessionId, phase, answers: getPhaseAnswers(phase) })
+      }
+      clearInterval(iv)
 
       if (resp.session_complete) {
-        toast.success('Interview complete! Computing your scores...')
-        await scoringAPI.compute(sessionId)
-        setTimeout(() => navigate(`/results/${sessionId}`), 2000)
-      } else if (resp.next_question) {
-        setTimeout(() => {
-          setCurrentQ(resp.next_question)
+        toast.success('Interview complete! Computing scores...')
+        scoringAPI.compute(sessionId).catch(e => console.warn('Pre-compute notice:', e))
+        navigate(`/results/${sessionId}`)
+        return
+      }
+
+      const np = resp.next_phase
+      if (np === 'adaptive') {
+        setSessionPhase('adaptive')
+        setPaletteOpen(false)
+        if (resp.first_adaptive_question) {
+          setAdaptiveQ(resp.first_adaptive_question)
+          setAdaptiveIdx(0)
+          setCurrentQ(resp.first_adaptive_question)
           setAnswer('')
-          setCode('# Write your solution here\n')
-          setCodeResult(null)
-          setEvaluation(null)
-          setQNumber(n => n + 1)
-        }, 2500)
+          setSelectedOption('')
+        }
+        toast.success('MCQs submitted! Now: Technical Deep-Dive')
+      } else if (np === 'coding' && ENABLE_CODING_PHASE) {
+        setSessionPhase('coding')
+        setPaletteOpen(true)
+        const firstCQ = navigableQuestions.find(q => q.phase === 'coding')
+        if (firstCQ) { setCurrentQ(firstCQ); setCode(firstCQ.starter_code || '# Write your solution here\n'); setCodeResult(null); setLangId(71) }
+        toast.success('Adaptive done! Now: Coding Challenge')
+      } else {
+        toast.success(resp.message || 'Phase submitted!')
       }
     } catch (err) {
-      toast.error(err.message || 'Failed to submit answer')
+      clearInterval(iv)
+      if (err.message && err.message.toLowerCase().includes('already completed')) {
+        toast.success('Interview completed! Loading results...')
+        navigate(`/results/${sessionId}`)
+        return
+      }
+      toast.error(err.message || 'Failed to submit')
     } finally {
-      clearInterval(msgInterval)
       setThinkingMsg('')
       setSubmitting(false)
     }
   }
 
+  // ── Adaptive single submit ────────────────────────────────────────────────────
+
+  const handleAdaptiveSubmit = async () => {
+    if (!answer.trim()) return toast.error('Please provide an answer')
+    setSubmitting(true)
+    if (isListening) { recognitionRef.current?.stop(); setIsListening(false) }
+
+    const msgs = ['Submitting...', 'Evaluating...', 'Next question...']
+    let mi = 0
+    setThinkingMsg(msgs[0])
+    const iv = setInterval(() => { mi = (mi + 1) % msgs.length; setThinkingMsg(msgs[mi]) }, 2000)
+
+    try {
+      const resp = await interviewAPI.submitAnswer({
+        session_id: sessionId, question_id: adaptiveQ.id,
+        answer_text: answer, selected_option: null, language: 'python',
+      })
+      clearInterval(iv)
+
+      if (resp.session_complete) {
+        toast.success('Interview complete! Computing scores...')
+        scoringAPI.compute(sessionId).catch(e => console.warn('Pre-compute notice:', e))
+        navigate(`/results/${sessionId}`)
+        return
+      }
+
+      if (resp.next_question) {
+        const nq = resp.next_question
+        if (nq.phase === 'coding' && ENABLE_CODING_PHASE) {
+          setSessionPhase('coding')
+          setPaletteOpen(true)
+          const firstCQ = navigableQuestions.find(q => q.phase === 'coding')
+          if (firstCQ) { setCurrentQ(firstCQ); setCode(firstCQ.starter_code || '# Write your solution here\n'); setCodeResult(null); setLangId(71) }
+          toast.success('Deep-Dive done! Now: Coding Challenge')
+        } else if (nq.phase !== 'coding') {
+          setAdaptiveQ(nq)
+          setAdaptiveIdx(p => p + 1)
+          setCurrentQ(nq)
+          setAnswer('')
+          if (resp.message) toast.success(resp.message)
+        } else {
+          // Coding paused: complete interview session
+          toast.success('Interview complete! Computing scores...')
+          scoringAPI.compute(sessionId).catch(e => console.warn('Pre-compute notice:', e))
+          navigate(`/results/${sessionId}`)
+          return
+        }
+      }
+    } catch (err) {
+      clearInterval(iv)
+      if (err.message && err.message.toLowerCase().includes('already completed')) {
+        toast.success('Interview completed! Loading results...')
+        navigate(`/results/${sessionId}`)
+        return
+      }
+      toast.error(err.message || 'Failed to submit')
+    } finally {
+      setThinkingMsg('')
+      setSubmitting(false)
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────────
+
   if (!currentQ) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh' }}>
-      <div className="spinner" style={{ width: 48, height: 48 }} />
+    <div className="page-wrapper-md" aria-busy="true" style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 80 }}>
+      <div className="skeleton" style={{ width: '40%', height: 22 }} />
+      <div className="skeleton" style={{ width: '90%', height: 30 }} />
+      {[0, 1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 52 }} />)}
     </div>
   )
 
-  const isCoding = currentQ.type === 'coding'
-  const tb = TYPE_BADGE[currentQ.type] || TYPE_BADGE.technical
+  const isAdaptive = sessionPhase === 'adaptive'
+  const isCoding   = currentQ?.type === 'coding'
+  const isMcq      = currentQ?.type === 'aptitude_mcq' || currentQ?.type === 'role_mcq'
+  const tb         = TYPE_BADGE[currentQ.type] || TYPE_BADGE.technical
+  const TbIcon     = tb.icon
+
+  // Compute answered set
+  const answeredIds = new Set(Object.entries(localAnswers)
+    .filter(([, a]) => a?.selectedOption || a?.answer || (a?.code && a.code !== '# Write your solution here\n'))
+    .map(([id]) => id)
+  )
+  if (currentQ && (selectedOption || answer || (code && code !== '# Write your solution here\n'))) {
+    answeredIds.add(currentQ.id)
+  }
+
+  const totalNavigable   = navigableQuestions.length
+  const adaptiveAnswered = Math.min(adaptiveIdx, 5)
+  const overallAnswered  = answeredIds.size + adaptiveAnswered
+  const progressPercent  = Math.round((overallAnswered / (totalNavigable + 5)) * 100)
+
+  const paletteGroups = [
+    { phase: 'aptitude_mcq', questions: navigableQuestions.filter(q => q.phase === 'aptitude_mcq') },
+    { phase: 'role_mcq',     questions: navigableQuestions.filter(q => q.phase === 'role_mcq') },
+    ...(ENABLE_CODING_PHASE ? [{ phase: 'coding', questions: navigableQuestions.filter(q => q.phase === 'coding') }] : []),
+  ].filter(g => g.questions.length > 0)
+
+  const unansweredMcqs = navigableQuestions.filter(
+    q => (q.phase === 'aptitude_mcq' || q.phase === 'role_mcq') && !answeredIds.has(q.id)
+  ).length
+
+  const difficultyBadge = (d) =>
+    d === 'easy' ? 'badge-success' : d === 'hard' ? 'badge-error' : 'badge-warning'
+  const difficultyLabel = (d) => (d ? d.charAt(0).toUpperCase() + d.slice(1) : '')
+
+  const confirmExit = () => {
+    if (window.confirm('Leave the interview? Your answers so far are saved and you can come back to it.')) {
+      navigate('/dashboard')
+    }
+  }
 
   return (
-    <div style={{ padding: '24px', maxWidth: isCoding ? 1200 : 800, margin: '0 auto' }}>
-      {/* Progress */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
-          <span className="text-secondary">Question {qNumber} of {totalQ}</span>
-          <span className="text-secondary">{Math.round((qNumber / totalQ) * 100)}%</span>
-        </div>
-        <div className="progress-bar"><div className="progress-fill" style={{ width: `${(qNumber / totalQ) * 100}%` }} /></div>
-      </div>
+    <div className="session">
 
-      <div style={isCoding ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' } : {}}>
-        {/* Question */}
-        <div className="card" style={{ marginBottom: isCoding ? 0 : 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <span className="badge" style={{ background: `${tb.color}22`, color: tb.color }}>{tb.label}</span>
-              <span className="badge" style={{ background: `${DIFFICULTY_COLOR[currentQ.difficulty]}22`, color: DIFFICULTY_COLOR[currentQ.difficulty] }}>{currentQ.difficulty}</span>
-              {currentQ.topic && <span className="badge badge-primary">{currentQ.topic}</span>}
+      {/* ── Question navigator ─────────────────────────────── */}
+      {!isAdaptive && (
+        <aside
+          className="session-aside"
+          style={{ width: paletteOpen ? 280 : 0, minWidth: paletteOpen ? 280 : 0 }}
+          aria-label="Question navigator"
+          aria-hidden={!paletteOpen}
+        >
+          {paletteOpen && (
+            <>
+              <div style={{ padding: '18px 20px 16px', borderBottom: '1px solid var(--rule)' }}>
+                <div className="flex-between" style={{ marginBottom: 10 }}>
+                  <span style={{ fontWeight: 650 }}>Questions</span>
+                  <button
+                    onClick={() => setPaletteOpen(false)}
+                    className="navbar-logout"
+                    aria-label="Hide question list"
+                    title="Hide question list"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                </div>
+                <div className="text-secondary tabular" style={{ fontSize: '0.92rem', marginBottom: 8 }}>
+                  {answeredIds.size} of {totalNavigable} answered
+                </div>
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{
+                    width: `${totalNavigable ? Math.round((answeredIds.size / totalNavigable) * 100) : 0}%`,
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+              </div>
+
+              <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px' }}>
+                {paletteGroups.map(({ phase, questions }) => {
+                  const pm = PHASE_META[phase]
+                  const phaseAnswered = questions.filter(q => answeredIds.has(q.id)).length
+                  return (
+                    <div key={phase} style={{ marginBottom: 24 }}>
+                      <div className="flex-between" style={{ marginBottom: 10, fontSize: '0.9rem' }}>
+                        <span style={{ fontWeight: 600 }}>{pm.label}</span>
+                        <span className="text-muted tabular">{phaseAnswered}/{questions.length}</span>
+                      </div>
+                      <div className="qgrid">
+                        {questions.map((q, idx) => {
+                          const isAnswered = answeredIds.has(q.id)
+                          const isCurrent  = currentQ?.id === q.id
+                          return (
+                            <button
+                              key={q.id}
+                              onClick={() => navigateToQuestion(q)}
+                              title={`Question ${idx + 1}: ${q.topic} (${q.difficulty})${isAnswered ? ', answered' : ''}`}
+                              aria-label={`Question ${idx + 1}${isAnswered ? ', answered' : ''}`}
+                              aria-current={isCurrent ? 'true' : undefined}
+                              className={'qcell' + (isAnswered ? ' is-answered' : '') + (isCurrent ? ' is-current' : '')}
+                            >
+                              {idx + 1}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--rule)', padding: 16 }}>
+                {sessionPhase !== 'coding' ? (
+                  <button onClick={() => handleBatchSubmit('all_mcqs')} disabled={submitting} className="btn btn-primary btn-full">
+                    {submitting ? <><span className="spinner" /> {thinkingMsg || 'Submitting…'}</> : 'Submit answers'}
+                  </button>
+                ) : (
+                  <button onClick={() => handleBatchSubmit('coding')} disabled={submitting} className="btn btn-primary btn-full">
+                    {submitting ? <><span className="spinner" /> {thinkingMsg || 'Submitting…'}</> : 'Submit code and finish'}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </aside>
+      )}
+
+      {/* ── Main column ────────────────────────────────────── */}
+      <div style={{ flex: 1, minWidth: 0, height: '100%', overflowY: 'auto' }}>
+        <header className="session-bar">
+          {!isAdaptive && !paletteOpen && (
+            <button onClick={() => setPaletteOpen(true)} className="btn btn-secondary btn-sm">
+              <LayoutGrid size={15} /> Questions
+            </button>
+          )}
+          <span style={{ fontWeight: 650 }}>
+            {isAdaptive ? `Follow-up ${adaptiveIdx + 1} of 5` : PHASE_META[currentQ.type]?.label || 'Interview'}
+          </span>
+
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span className="text-secondary tabular" style={{ fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+              {progressPercent}% done
+            </span>
+            <div className="progress-bar session-progress" aria-hidden="true">
+              <div className="progress-fill" style={{ width: `${progressPercent}%`, transition: 'width 0.3s ease' }} />
             </div>
-            <button onClick={() => speakQuestion(currentQ.question)} className="btn btn-secondary btn-sm btn-icon" title="Read question aloud">
-              <Volume2 size={14} />
+            <button onClick={confirmExit} className="btn btn-ghost btn-sm" title="Save and leave">
+              Save and leave
             </button>
           </div>
+        </header>
 
-          <h2 style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.6, marginBottom: isCoding ? 0 : 24 }}>
-            {currentQ.question}
-          </h2>
+        <div style={{ maxWidth: isCoding ? 1280 : 860, margin: '0 auto', padding: '32px 32px 64px' }}>
+          <div style={isCoding ? { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 20, alignItems: 'start' } : undefined}>
 
-          {/* Evaluation Feedback */}
-          {evaluation && (
-            <div style={{ marginTop: 16, padding: 16, borderRadius: 10, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)' }}>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                {[
-                  { label: 'Keywords', val: evaluation.keyword_score?.toFixed(1) + '/10' },
-                  { label: 'Semantic', val: evaluation.semantic_score?.toFixed(1) + '/10' },
-                  { label: 'Overall', val: evaluation.composite_score?.toFixed(1) + '/10' },
-                ].map(s => (
-                  <div key={s.label} style={{ flex: 1, textAlign: 'center', padding: '8px', background: 'rgba(255,255,255,0.04)', borderRadius: 8 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700 }}>{s.val}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.label}</div>
+            {isCoding ? (
+              <>
+                <div className="sheet">
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+                    <span className="badge badge-neutral"><TbIcon size={12} /> {tb.label}</span>
+                    <span className={`badge ${difficultyBadge(currentQ.difficulty)}`}>{difficultyLabel(currentQ.difficulty)}</span>
+                    {currentQ.topic && <span className="badge badge-neutral">{currentQ.topic}</span>}
                   </div>
-                ))}
-              </div>
-              {evaluation.feedback && <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{evaluation.feedback}</p>}
-              {evaluation.missed_keywords?.length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Missed: </span>
-                  {evaluation.missed_keywords.map(k => <span key={k} style={{ fontSize: 12, color: '#fca5a5', marginRight: 6 }}>{k}</span>)}
+
+                  <div className="speaker"><span className="speaker-dot" aria-hidden="true" />Interviewer</div>
+                    <h2 className="question-text">{currentQ.question}</h2>
+
+                  {currentQ.test_cases && currentQ.test_cases.length > 0 && (
+                    <div>
+                      <h3 style={{ fontSize: '0.95rem', marginBottom: 10 }}>Test cases</h3>
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                        {currentQ.test_cases.map((_, idx) => (
+                          <button key={idx} onClick={() => setActiveTestCase(idx)}
+                            className={`btn btn-sm ${activeTestCase === idx ? 'btn-primary' : 'btn-secondary'}`}>
+                            Case {idx + 1}
+                          </button>
+                        ))}
+                      </div>
+                      {currentQ.test_cases[activeTestCase] && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+                          <div>
+                            <div className="label" style={{ marginBottom: 4 }}>Input</div>
+                            <pre className="code-block">
+                              {currentQ.test_cases[activeTestCase].input_args ? JSON.stringify(currentQ.test_cases[activeTestCase].input_args) : currentQ.test_cases[activeTestCase].input}
+                            </pre>
+                          </div>
+                          <div>
+                            <div className="label" style={{ marginBottom: 4 }}>Expected output</div>
+                            <pre className="code-block">
+                              {typeof currentQ.test_cases[activeTestCase].expected_output === 'object' ? JSON.stringify(currentQ.test_cases[activeTestCase].expected_output) : currentQ.test_cases[activeTestCase].expected_output}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
 
-        {/* Answer Area */}
-        {isCoding ? (
-          <div className="card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 600 }}>Code Editor</h3>
-              <select value={langId} onChange={e => setLangId(Number(e.target.value))} className="form-select" style={{ padding: '6px 10px', fontSize: 13 }}>
-                {LANGUAGE_IDS.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </div>
-            <div style={{ borderRadius: 10, overflow: 'hidden', marginBottom: 16, border: '1px solid var(--color-border)' }}>
-              <Editor height="300px" defaultLanguage="python" language={langId === 62 ? 'java' : langId === 63 ? 'javascript' : 'python'}
-                value={code} onChange={v => setCode(v)} theme="vs-dark"
-                options={{ fontSize: 14, minimap: { enabled: false }, lineNumbers: 'on', scrollBeyondLastLine: false, fontFamily: 'JetBrains Mono, monospace' }} />
-            </div>
+                <div className="sheet">
+                  <div className="flex-between" style={{ marginBottom: 14 }}>
+                    <h3 style={{ fontSize: '1rem' }}>Your solution</h3>
+                    <label className="visually-hidden" htmlFor="lang-select">Language</label>
+                    <select id="lang-select" value={langId} onChange={e => setLangId(Number(e.target.value))}
+                      className="form-select" style={{ width: 'auto', minWidth: 130, padding: '6px 10px', fontSize: 14 }}>
+                      {LANGUAGE_IDS.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                  </div>
 
-            {codeResult && (
-              <div style={{ padding: 12, borderRadius: 8, background: codeResult.status.includes('Accepted') ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${codeResult.status.includes('Accepted') ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, marginBottom: 16, fontSize: 13, fontFamily: 'JetBrains Mono, monospace' }}>
-                <div style={{ fontWeight: 600, marginBottom: 6 }}>Status: {codeResult.status}</div>
-                {codeResult.stdout && <div style={{ color: '#86efac', whiteSpace: 'pre-wrap' }}>{codeResult.stdout}</div>}
-                {codeResult.stderr && <div style={{ color: '#fca5a5', whiteSpace: 'pre-wrap' }}>{codeResult.stderr}</div>}
-                {codeResult.compile_output && <div style={{ color: '#fcd34d', whiteSpace: 'pre-wrap' }}>{codeResult.compile_output}</div>}
-                <div style={{ color: 'var(--text-muted)', marginTop: 6 }}>Score: {codeResult.coding_score}/10</div>
+                  <MemoizedEditor code={code} langId={langId} onChange={handleCodeChange} />
+
+                  {codeResult && (
+                    <div className={`callout ${codeResult.status?.includes('Accepted') ? 'callout-success' : 'callout-error'}`}
+                      style={{ marginBottom: 14, fontFamily: 'var(--font-mono)', fontSize: 13, flexDirection: 'column' }}>
+                      <strong style={{ color: 'inherit' }}>{codeResult.status}</strong>
+                      {codeResult.stdout && <div style={{ color: 'var(--ink)', whiteSpace: 'pre-wrap' }}>{codeResult.stdout}</div>}
+                      {codeResult.stderr && <div style={{ whiteSpace: 'pre-wrap' }}>{codeResult.stderr}</div>}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={handleRunCode} disabled={runningCode} className="btn btn-secondary" style={{ flex: 1 }}>
+                      {runningCode ? <><span className="spinner" /> Running…</> : <><Code size={15} /> Run code</>}
+                    </button>
+                    <button onClick={() => handleBatchSubmit('coding')} disabled={submitting} className="btn btn-primary" style={{ flex: 1 }}>
+                      {submitting ? <><span className="spinner" /> Submitting…</> : 'Submit code'}
+                    </button>
+                  </div>
+                </div>
+              </>
+
+            ) : isMcq ? (
+              (() => {
+                const allNavMcqs = navigableQuestions.filter(q => q.phase === 'aptitude_mcq' || q.phase === 'role_mcq')
+                const ci = allNavMcqs.findIndex(q => q.id === currentQ.id)
+                const prevQ = ci > 0 ? allNavMcqs[ci - 1] : null
+                const nextQ = ci < allNavMcqs.length - 1 ? allNavMcqs[ci + 1] : null
+
+                return (
+                  <div className="sheet" style={{ padding: '32px 36px' }}>
+                    <div className="flex-between" style={{ marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+                      <span className="text-secondary tabular">
+                        Question <strong>{ci + 1}</strong> of {allNavMcqs.length}
+                      </span>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {currentQ.topic && <span className="badge badge-neutral">{currentQ.topic}</span>}
+                        <span className={`badge ${difficultyBadge(currentQ.difficulty)}`}>{difficultyLabel(currentQ.difficulty)}</span>
+                      </div>
+                    </div>
+
+                    <div className="speaker"><span className="speaker-dot" aria-hidden="true" />Interviewer</div>
+                    <h2 className="question-text">{currentQ.question}</h2>
+
+                    <div role="group" aria-label="Answer options" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
+                      {currentQ.options?.map((opt, oi) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          className="choice"
+                          aria-pressed={selectedOption === opt}
+                          onClick={() => setSelectedOption(opt)}
+                          
+                        >
+                          <span className="option-key" aria-hidden="true">{String.fromCharCode(65 + oi)}</span>
+                          <span style={{ lineHeight: 1.45, flex: 1 }}>{opt}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex-between" style={{ paddingTop: 20, borderTop: '1px solid var(--rule)', flexWrap: 'wrap', gap: 12 }}>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => prevQ && navigateToQuestion(prevQ)} disabled={!prevQ} className="btn btn-secondary">
+                          <ChevronLeft size={16} /> Previous
+                        </button>
+                        <button onClick={() => nextQ && navigateToQuestion(nextQ)} disabled={!nextQ} className="btn btn-secondary">
+                          Next <ChevronRight size={16} />
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                        {unansweredMcqs > 0 && (
+                          <span className="text-secondary" style={{ fontSize: '0.9rem' }}>{unansweredMcqs} left unanswered</span>
+                        )}
+                        <button onClick={() => handleBatchSubmit('all_mcqs')} disabled={submitting} className="btn btn-primary">
+                          {submitting ? <><span className="spinner" /> {thinkingMsg || 'Submitting…'}</> : 'Submit answers'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()
+
+            ) : (
+              <div className="sheet" style={{ padding: '32px 36px' }}>
+                <div className="flex-between" style={{ marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {currentQ.topic && <span className="badge badge-neutral">{currentQ.topic}</span>}
+                    <span className={`badge ${difficultyBadge(currentQ.difficulty)}`}>{difficultyLabel(currentQ.difficulty)}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => speakQuestion(currentQ.question)} className="btn btn-secondary btn-sm" title="Read the question aloud">
+                      <Volume2 size={15} /> Read aloud
+                    </button>
+                    <button onClick={toggleListening} className={`btn btn-sm ${isListening ? 'btn-danger' : 'btn-secondary'}`}>
+                      {isListening ? <><MicOff size={15} /> Stop dictation</> : <><Mic size={15} /> Dictate answer</>}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="speaker"><span className="speaker-dot" aria-hidden="true" />Interviewer</div>
+                    <h2 className="question-text">{currentQ.question}</h2>
+
+                {isListening && (
+                  <div className="callout callout-error" style={{ marginBottom: 14, alignItems: 'center', borderLeftWidth: 3 }}>
+                    <span className="rec-dot" aria-hidden="true" />
+                    <span style={{ color: 'var(--ink)', whiteSpace: 'nowrap' }}>Listening</span>
+                    <div style={{ flex: 1, maxWidth: 320 }}>
+                      <AudioWaveform isActive={isListening} height={26} barCount={28} />
+                    </div>
+                  </div>
+                )}
+
+                <label htmlFor="adaptive-answer" className="speaker" style={{ marginTop: 8 }}><span className="speaker-dot" aria-hidden="true" style={{ background: 'var(--orange)' }} />Your answer</label>
+                <textarea
+                  id="adaptive-answer"
+                  value={answer}
+                  onChange={e => setAnswer(e.target.value)}
+                  className="form-input answer-box"
+                  placeholder="Type here, or use Dictate answer to speak."
+                />
+
+                <div className="flex-between" style={{ marginTop: 18, flexWrap: 'wrap', gap: 12 }}>
+                  <span className="text-muted tabular" style={{ fontSize: '0.9rem' }}>
+                    {answer.split(/\s+/).filter(Boolean).length} words
+                  </span>
+                  <button onClick={handleAdaptiveSubmit} disabled={submitting || !answer.trim()} className="btn btn-primary">
+                    {submitting
+                      ? <><span className="spinner" /> {thinkingMsg || 'Marking…'}</>
+                      : <><Send size={15} /> Submit answer</>}
+                  </button>
+                </div>
               </div>
             )}
-
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={handleRunCode} disabled={runningCode} className="btn btn-secondary" style={{ flex: 1 }}>
-                {runningCode ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <><Code size={14} /> Run Code</>}
-              </button>
-              <button onClick={handleSubmit} disabled={submitting} className="btn btn-primary" style={{ flex: 1 }}>
-                {submitting ? <><span className="spinner" style={{ width: 16, height: 16 }} /> {thinkingMsg || 'Submitting...'}</> : <><CheckCircle size={14} /> Submit</>}
-              </button>
-            </div>
           </div>
-        ) : (
-          <div className="card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 600 }}>Your Answer</h3>
-              <button onClick={toggleListening} className={`btn btn-sm ${isListening ? 'btn-danger' : 'btn-secondary'}`}
-                style={isListening ? { animation: 'pulse 1.5s ease infinite' } : {}}>
-                {isListening ? <><MicOff size={14} /> Stop</> : <><Mic size={14} /> Voice Input</>}
-              </button>
-            </div>
-            <textarea ref={answerRef} value={answer} onChange={e => setAnswer(e.target.value)}
-              className="form-input" placeholder="Type your answer here, or use voice input above..."
-              style={{ width: '100%', minHeight: 180, resize: 'vertical', fontFamily: 'Inter, sans-serif', fontSize: 14, lineHeight: 1.6 }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-              <span className="text-muted text-xs">{answer.split(/\s+/).filter(Boolean).length} words</span>
-              <button onClick={handleSubmit} disabled={submitting || !answer.trim()} className="btn btn-primary">
-                {submitting
-                  ? <><span className="spinner" style={{ width: 18, height: 18 }} /> <span style={{ fontSize: 13 }}>{thinkingMsg || 'Submitting...'}</span></>
-                  : <><Send size={16} /> Submit Answer</>}
-              </button>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   )

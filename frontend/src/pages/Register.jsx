@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
+import { PasswordInput } from '../components/AuthBits'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -27,6 +28,7 @@ export default function Register() {
   return (
     <AuthLayout
       title="Create your account"
+      blurb="Create a free account, upload your resume, and sit your first practice interview in minutes."
       subtitle="Then upload your resume to start your first mock interview."
       footer={<>Already have an account? <Link to="/login">Sign in</Link></>}
     >
@@ -60,10 +62,8 @@ export default function Register() {
 
         <div className="form-group">
           <label className="form-label" htmlFor="reg-password">Password</label>
-          <input
+          <PasswordInput
             id="reg-password"
-            type="password"
-            className="form-input"
             value={form.password}
             onChange={handleChange('password')}
             required
@@ -75,10 +75,8 @@ export default function Register() {
 
         <div className="form-group">
           <label className="form-label" htmlFor="reg-confirm">Confirm password</label>
-          <input
+          <PasswordInput
             id="reg-confirm"
-            type="password"
-            className="form-input"
             value={form.confirm}
             onChange={handleChange('confirm')}
             required

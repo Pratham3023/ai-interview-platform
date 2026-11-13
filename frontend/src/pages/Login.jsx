@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
+import { PasswordInput } from '../components/AuthBits'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -44,10 +45,8 @@ export default function Login() {
 
         <div className="form-group">
           <label className="form-label" htmlFor="login-password">Password</label>
-          <input
+          <PasswordInput
             id="login-password"
-            type="password"
-            className="form-input"
             value={password}
             onChange={e => setPassword(e.target.value)}
             required

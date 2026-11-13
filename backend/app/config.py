@@ -3,6 +3,7 @@ Configuration — central environment settings
 """
 
 from typing import List
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
@@ -55,7 +56,10 @@ class Settings(BaseSettings):
     ALLOWED_RESUME_TYPES: List[str] = ["application/pdf"]
 
     class Config:
-        env_file = ".env"
+        env_file = (
+            Path(__file__).resolve().parent.parent / ".env",
+            ".env",
+        )
         env_file_encoding = "utf-8"
         case_sensitive = False
 

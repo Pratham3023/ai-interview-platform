@@ -35,11 +35,15 @@ async def submit_code(
     # Get language name from ID if numeric, else use as-is
     language = str(data.language_id)
 
-    # Execute via Piston API (never on this server)
-    result = await piston_service.submit_and_wait(
+    q_doc = await db.questions.find_one({"_id": data.question_id})
+    test_cases = q_doc.get("test_cases", []) if q_doc else []
+
+    # Execute against test cases via Piston API (never on this server)
+    result = await piston_service.evaluate_test_cases(
         source_code=data.code,
         language=language,
-        stdin=data.stdin or "",
+        test_cases=test_cases,
+        method_name=q_doc.get("method_name") if q_doc else None,
     )
 
     coding_score = piston_service.calculate_coding_score(result)

@@ -83,14 +83,24 @@ class ScoringEngine:
         aptitude_score,   apt_correct  = self.score_mcq_phase(answers, "aptitude_mcq", 15)
         role_mcq_score,   role_correct = self.score_mcq_phase(answers, "role_mcq",     15)
         adaptive_score                 = self.score_adaptive_phase(answers)
-        coding_score                   = self.score_coding_phase(answers)
-
-        overall = (
-            aptitude_score  * WEIGHT_APTITUDE
-            + role_mcq_score  * WEIGHT_ROLE_MCQ
-            + adaptive_score  * WEIGHT_ADAPTIVE
-            + coding_score    * WEIGHT_CODING
-        )
+        coding_records = [a for a in answers if a.get("question_type") == "coding"]
+        if coding_records:
+            coding_score = self.score_coding_phase(answers)
+            overall = (
+                aptitude_score  * WEIGHT_APTITUDE
+                + role_mcq_score  * WEIGHT_ROLE_MCQ
+                + adaptive_score  * WEIGHT_ADAPTIVE
+                + coding_score    * WEIGHT_CODING
+            )
+        else:
+            coding_score = 0.0
+            # 3-Phase weighting when coding evaluation is temporarily paused:
+            # Aptitude: 30%, Role MCQ: 35%, Adaptive: 35% -> sum = 100%
+            overall = (
+                aptitude_score  * 0.30
+                + role_mcq_score  * 0.35
+                + adaptive_score  * 0.35
+            )
 
         # Keyword coverage
         all_kw_scores = [a.get("keyword_score", 0) for a in answers]

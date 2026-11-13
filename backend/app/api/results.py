@@ -17,7 +17,7 @@ from app.services.roadmap_generator import roadmap_generator
 from app.schemas import (
     ScoreResponse, FeedbackResponse, RoadmapResponse,
     DashboardResponse, SessionSummary, UserResponse,
-    WeekPlanSchema, DailyTaskSchema,
+    WeekPlanSchema, DailyTaskSchema, OrderedTopicSchema,
 )
 
 # ── Scoring ───────────────────────────────────────────────────────────────────
@@ -129,15 +129,19 @@ async def generate_feedback(
 
     feedback_data = await feedback_engine.generate(session)
 
-    feedback_id = str(uuid.uuid4())
+    existing_feedback = await db.feedbacks.find_one({"session_id": session_id})
+    feedback_id = existing_feedback["_id"] if existing_feedback else str(uuid.uuid4())
     doc = {
-        "_id": feedback_id,
         "session_id": session_id,
         "user_id": current_user["_id"],
         **feedback_data,
         "generated_at": datetime.utcnow(),
     }
-    await db.feedbacks.replace_one({"session_id": session_id}, doc, upsert=True)
+    await db.feedbacks.update_one(
+        {"session_id": session_id},
+        {"$set": doc, "$setOnInsert": {"_id": feedback_id}},
+        upsert=True,
+    )
 
     return FeedbackResponse(
         feedback_id=feedback_id,
@@ -198,20 +202,26 @@ async def generate_roadmap(
     job_role = session.get("job_role", "Software Engineer")
 
     week_plans = roadmap_generator.generate(topic_scores, weak_topics, job_role)
+    ordered_topics = roadmap_generator.get_ordered_topics(topic_scores, weak_topics, job_role)
 
-    roadmap_id = str(uuid.uuid4())
+    existing_roadmap = await db.roadmaps.find_one({"session_id": session_id})
+    roadmap_id = existing_roadmap["_id"] if existing_roadmap else str(uuid.uuid4())
     week_docs = [wp.dict() for wp in week_plans]
     doc = {
-        "_id": roadmap_id,
         "session_id": session_id,
         "user_id": current_user["_id"],
         "job_role": job_role,
         "weak_topics": weak_topics,
         "weeks": week_docs,
         "total_weeks": len(week_plans),
+        "ordered_topics": ordered_topics,
         "generated_at": datetime.utcnow(),
     }
-    await db.roadmaps.replace_one({"session_id": session_id}, doc, upsert=True)
+    await db.roadmaps.update_one(
+        {"session_id": session_id},
+        {"$set": doc, "$setOnInsert": {"_id": roadmap_id}},
+        upsert=True,
+    )
 
     return RoadmapResponse(
         roadmap_id=roadmap_id,
@@ -237,6 +247,7 @@ async def generate_roadmap(
             for wp in week_plans
         ],
         total_weeks=len(week_plans),
+        ordered_topics=[OrderedTopicSchema(**t) for t in ordered_topics],
         generated_at=doc["generated_at"],
     )
 
@@ -260,6 +271,7 @@ async def get_roadmap(
         weak_topics=doc.get("weak_topics", []),
         weeks=[WeekPlanSchema(**w) for w in doc.get("weeks", [])],
         total_weeks=doc.get("total_weeks", 0),
+        ordered_topics=[OrderedTopicSchema(**t) for t in doc.get("ordered_topics", [])],
         generated_at=doc["generated_at"],
     )
 
@@ -269,6 +281,7 @@ async def get_roadmap(
 dashboard_router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
+@dashboard_router.get("", response_model=DashboardResponse)
 @dashboard_router.get("/", response_model=DashboardResponse)
 async def get_dashboard(
     db: AsyncIOMotorDatabase = Depends(get_mongo_db),

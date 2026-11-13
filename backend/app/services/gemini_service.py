@@ -31,7 +31,10 @@ class GeminiService:
             if not settings.GEMINI_API_KEY:
                 logger.warning("GEMINI_API_KEY not set — AI features degraded")
                 return
-            genai.configure(api_key=settings.GEMINI_API_KEY)
+            try:
+                genai.configure(api_key=settings.GEMINI_API_KEY, transport="rest")
+            except Exception:
+                genai.configure(api_key=settings.GEMINI_API_KEY)
             self._model = genai.GenerativeModel(settings.GEMINI_MODEL)
             self._initialized = True
 
@@ -40,12 +43,24 @@ class GeminiService:
         self._ensure_init()
         if not self._initialized:
             return ""
-        try:
-            response = self._model.generate_content(prompt)
-            return response.text.strip()
-        except Exception as e:
-            logger.error("Gemini call failed: %s", e)
-            return ""
+        
+        # Candidate models to try in sequence
+        candidate_models = [settings.GEMINI_MODEL, "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash"]
+        tried = set()
+        for model_name in candidate_models:
+            if model_name in tried:
+                continue
+            tried.add(model_name)
+            try:
+                m = genai.GenerativeModel(model_name)
+                response = m.generate_content(prompt)
+                if response and hasattr(response, "text") and response.text:
+                    return response.text.strip()
+            except Exception as e:
+                logger.warning("Gemini model %s failed: %s", model_name, e)
+                continue
+        logger.error("All Gemini candidate models failed to generate content.")
+        return ""
 
     # ── Follow-up Question Generation ────────────────────────────────────────
 

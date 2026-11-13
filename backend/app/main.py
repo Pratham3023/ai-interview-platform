@@ -4,11 +4,14 @@ FastAPI Application Entry Point
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
 from contextlib import asynccontextmanager
 import logging
 
 from app.config import settings
-from app.database import get_mongo_db, close_mongo, close_redis
+from app.database import get_mongo_db, get_redis, close_mongo, close_redis
 from app.api.auth import router as auth_router
 from app.api.resume import router as resume_router
 from app.api.interview import router as interview_router
@@ -29,6 +32,8 @@ async def lifespan(app: FastAPI):
     # Startup: warm up connections
     logger.info("Starting %s v%s", settings.APP_NAME, settings.APP_VERSION)
     await get_mongo_db()
+    redis_client = await get_redis()
+    FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
     yield
     # Shutdown: close connections
     await close_mongo()
@@ -59,6 +64,9 @@ else:
     cors_kwargs["allow_credentials"] = True
 
 app.add_middleware(CORSMiddleware, **cors_kwargs)
+
+# Add GZip Middleware for payload compression
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth_router)

@@ -254,22 +254,32 @@ class AdaptiveInterviewEngine:
         if exclude_ids:
             query["_id"] = {"$nin": list(exclude_ids)}
 
-        cursor = db.questions.aggregate([
-            {"$match": query},
-            {"$sample": {"size": 1}},
-        ])
-        doc = await cursor.to_list(length=1)
+        try:
+            cursor = db.questions.aggregate([
+                {"$match": query},
+                {"$sample": {"size": 1}},
+            ])
+            doc = await cursor.to_list(length=1)
+        except Exception:
+            docs = await db.questions.find(query).to_list(length=10)
+            doc = [random.choice(docs)] if docs else []
+
         if doc:
             return self._doc_to_dict(doc[0])
 
         # Fallback: try medium difficulty
         if difficulty != Difficulty.MEDIUM.value:
             query["difficulty"] = Difficulty.MEDIUM.value
-            cursor = db.questions.aggregate([
-                {"$match": query},
-                {"$sample": {"size": 1}},
-            ])
-            doc = await cursor.to_list(length=1)
+            try:
+                cursor = db.questions.aggregate([
+                    {"$match": query},
+                    {"$sample": {"size": 1}},
+                ])
+                doc = await cursor.to_list(length=1)
+            except Exception:
+                docs = await db.questions.find(query).to_list(length=10)
+                doc = [random.choice(docs)] if docs else []
+
             if doc:
                 return self._doc_to_dict(doc[0])
         return None

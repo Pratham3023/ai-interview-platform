@@ -97,6 +97,7 @@ async def get_resume(
     )
 
 
+@router.get("", response_model=List[SkillProfileResponse])
 @router.get("/", response_model=List[SkillProfileResponse])
 async def list_resumes(
     db: AsyncIOMotorDatabase = Depends(get_mongo_db),

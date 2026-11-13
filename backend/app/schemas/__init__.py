@@ -65,6 +65,9 @@ class QuestionResponse(BaseModel):
     q_in_phase: int = 0               # 1-indexed position within current phase
     total_in_phase: int = 0           # total questions in current phase
     overall_progress: int = 0         # 0-based count of questions answered so far
+    test_cases: List[Dict[str, Any]] = [] # For coding questions
+    starter_code: Optional[str] = None
+    method_name: Optional[str] = None
 
 
 class StartInterviewResponse(BaseModel):
@@ -72,6 +75,9 @@ class StartInterviewResponse(BaseModel):
     first_question: QuestionResponse
     total_questions: int = 37
     message: str = "Interview started"
+    # All navigable questions (Phase 1 MCQ + Phase 2 MCQ + Coding) sent up-front
+    # so the frontend can build the question palette without extra round-trips.
+    all_navigable_questions: List[QuestionResponse] = []
 
 
 class SubmitAnswerRequest(BaseModel):
@@ -93,6 +99,31 @@ class SubmitAnswerResponse(BaseModel):
     phase: str = ""
     phase_label: str = ""
     overall_progress: int = 0            # how many questions answered (0-37)
+
+
+# ── Batch Answer (for navigable phases: aptitude_mcq, role_mcq, coding) ──────
+
+class SingleAnswerPayload(BaseModel):
+    question_id: str
+    answer_text: str = ""
+    selected_option: Optional[str] = None   # MCQ: "A" | "B" | "C" | "D"
+    language: Optional[str] = "python"      # coding phase only
+
+
+class BatchAnswerRequest(BaseModel):
+    session_id: str
+    phase: str                              # "aptitude_mcq" | "role_mcq" | "coding"
+    answers: List[SingleAnswerPayload]
+
+
+class BatchAnswerResponse(BaseModel):
+    phase: str
+    submitted: int
+    next_phase: str                         # phase to proceed to next
+    next_phase_label: str = ""
+    first_adaptive_question: Optional[QuestionResponse] = None  # set when transitioning to adaptive
+    session_complete: bool = False
+    message: str = ""
 
 
 # ── Coding ────────────────────────────────────────────────────────────────────
@@ -177,13 +208,27 @@ class WeekPlanSchema(BaseModel):
     daily_tasks: List[DailyTaskSchema] = []
 
 
+class TopicResourceSchema(BaseModel):
+    title: str
+    url: str
+    type: str = "article"
+
+
+class OrderedTopicSchema(BaseModel):
+    topic: str
+    domain: str
+    severity: str = "moderately_weak"
+    resources: List[TopicResourceSchema] = []
+
+
 class RoadmapResponse(BaseModel):
     roadmap_id: str
     session_id: str
     job_role: str
     weak_topics: List[str]
-    weeks: List[WeekPlanSchema]
-    total_weeks: int
+    weeks: List[WeekPlanSchema] = []
+    total_weeks: int = 0
+    ordered_topics: List[OrderedTopicSchema] = []
     generated_at: datetime
 
 

@@ -33,7 +33,7 @@ export default function AudioWaveform({ isActive = false, height = 48, barCount 
       const startX = (width - totalWidth) / 2
 
       // Create vertical gradient
-      ctx.fillStyle = '#FF8240'
+      ctx.fillStyle = '#ECECF1'
 
       for (let i = 0; i < barCount; i++) {
         const x = startX + i * (barWidth + gap)

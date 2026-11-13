@@ -4,7 +4,9 @@ import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion
 import { LayoutDashboard, FileText, Map, Settings } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Wordmark, Turn, Eclipse } from '../components/Marks'
+import { Reveal, Stagger, StaggerItem } from '../components/Reveal'
 import Circuit from '../components/Circuit'
+import Backdrop from '../components/Backdrop'
 
 const STEPS = [
   { title: 'Upload your resume', body: 'A PDF is enough. We read the skills you list so the questions match what you say you know.' },
@@ -82,9 +84,20 @@ export default function Landing() {
   const { user } = useAuth()
   const startHref = user ? '/upload' : '/register'
   const startLabel = user ? 'Start a new interview' : 'Start practising'
-
-  const stageRef = useRef(null)
   const reduce = useReducedMotion()
+
+  // Whole-page progress bar
+  const { scrollYProgress: pageProgress, scrollY } = useScroll()
+
+  // Hero drifts up and fades as you scroll away; the circuit lags behind for depth
+  const heroY        = useTransform(scrollY, [0, 600], [0, -110])
+  const heroOpacity  = useTransform(scrollY, [0, 480], [1, 0])
+  const circuitY     = useTransform(scrollY, [0, 600], [0, -40])
+  const circuitScale = useTransform(scrollY, [0, 600], [1, 1.08])
+  const flareY       = useTransform(scrollY, [0, 600], [0, 140])
+
+  // Report preview tilts up and lights as it enters
+  const stageRef = useRef(null)
   const { scrollYProgress } = useScroll({ target: stageRef, offset: ['start end', 'start 0.25'] })
   const rotateX = useTransform(scrollYProgress, [0, 1], [24, 0])
   const scale   = useTransform(scrollYProgress, [0, 1], [0.9, 1])
@@ -92,10 +105,28 @@ export default function Landing() {
   const light   = useTransform(scrollYProgress, [0, 1], [0.25, 1])
   const frameStyle = reduce ? undefined : { rotateX, scale, y }
 
+  // Closing planet rises into view
+  const closingRef = useRef(null)
+  const { scrollYProgress: closingProgress } = useScroll({ target: closingRef, offset: ['start end', 'end end'] })
+  const planetY = useTransform(closingProgress, [0, 1], [180, 0])
+
+  const heroIntro = reduce ? {} : {
+    initial: 'hidden', animate: 'show',
+    variants: { hidden: {}, show: { transition: { staggerChildren: 0.1, delayChildren: 0.1 } } },
+  }
+  const introItem = {
+    hidden: { opacity: 0, y: 22, filter: 'blur(8px)' },
+    show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } },
+  }
+
   return (
     <div>
+      <Backdrop />
+      <div className="page-layer">
+      {!reduce && <motion.div className="scroll-progress" style={{ scaleX: pageProgress }} aria-hidden="true" />}
+
       {!user && (
-        <header className="site-nav">
+        <header className="site-nav glass-bar">
           <div className="container site-nav-inner">
             <Wordmark />
             <nav className="site-links" aria-label="Sections">
@@ -113,49 +144,57 @@ export default function Landing() {
       )}
 
       <section className={'hero2' + (user ? ' under-appnav' : '')}>
-        <div className="hero2-flare" aria-hidden="true" />
+        <motion.div className="hero2-flare" aria-hidden="true" style={reduce ? undefined : { y: flareY }} />
 
-        <div className="container hero2-content">
-          <div className="pill"><b>New</b> Follow-up questions that react to your answers</div>
-          <h1>Interview practice that pushes back.</h1>
-          <p className="hero2-lede">
-            Upload your resume and sit a technical interview built around it. Answer well
-            and the questions get harder; struggle and they dig in. Then see exactly what to fix.
-          </p>
-          <div className="hero-actions">
-            <Link to={startHref} className="btn btn-primary btn-lg">{startLabel}</Link>
-            <a href="#how" className="btn btn-secondary btn-lg">See how it works</a>
-          </div>
-        </div>
+        <motion.div className="container hero2-content" style={reduce ? undefined : { y: heroY, opacity: heroOpacity }}>
+          <motion.div {...heroIntro}>
+            <motion.div variants={introItem} className="pill"><b>New</b> Follow-up questions that react to your answers</motion.div>
+            <motion.h1 variants={introItem}>Interview practice that pushes back.</motion.h1>
+            <motion.p variants={introItem} className="hero2-lede">
+              Upload your resume and sit a technical interview built around it. Answer well
+              and the questions get harder; struggle and they dig in. Then see exactly what to fix.
+            </motion.p>
+            <motion.div variants={introItem} className="hero-actions">
+              <Link to={startHref} className="btn btn-primary btn-lg">{startLabel}</Link>
+              <a href="#how" className="btn btn-secondary btn-lg">See how it works</a>
+            </motion.div>
+          </motion.div>
+        </motion.div>
 
-        <div className="hero2-circuit">
+        <motion.div
+          className="hero2-circuit"
+          style={reduce ? undefined : { y: circuitY, scale: circuitScale }}
+          initial={reduce ? undefined : { opacity: 0 }}
+          animate={reduce ? undefined : { opacity: 1 }}
+          transition={{ duration: 1.2, delay: 0.5 }}
+        >
           <Circuit />
-        </div>
+        </motion.div>
       </section>
 
       <section id="how" className="section">
         <div className="container">
-          <div className="section-head">
+          <Reveal className="section-head">
             <h2>One sitting, start to finish</h2>
             <p className="section-lede">About 35 questions. Leave whenever you need to; your answers are saved.</p>
-          </div>
-          <ol className="steps">
+          </Reveal>
+          <Stagger as="ol" className="steps" gap={0.12}>
             {STEPS.map((s, i) => (
-              <li key={s.title} className="step">
+              <StaggerItem as="li" key={s.title} className="step glass">
                 <span className="step-num">{i + 1}</span>
                 <h3>{s.title}</h3>
                 <p>{s.body}</p>
-              </li>
+              </StaggerItem>
             ))}
-          </ol>
+          </Stagger>
         </div>
       </section>
 
       <section id="report" className="showcase">
-        <div className="container section-head center">
+        <Reveal className="container section-head center">
           <h2>Then you get the report</h2>
           <p className="section-lede">A straight verdict, scores by topic, and a study plan that starts with the basics.</p>
-        </div>
+        </Reveal>
         <Eclipse />
         <div className="stage" ref={stageRef} aria-label="Preview of an interview report">
           <motion.div className="stage-light" style={reduce ? undefined : { opacity: light }} aria-hidden="true" />
@@ -169,7 +208,7 @@ export default function Landing() {
 
       <section id="follow-ups" className="section" style={{ paddingTop: 0 }}>
         <div className="container split">
-          <div>
+          <Reveal>
             <h2>Follow-ups that react to what you said</h2>
             <p>
               The last five questions aren’t from a fixed list. Each one is written from
@@ -180,34 +219,42 @@ export default function Landing() {
               Get one right and the next goes deeper. Miss something and it comes back
               to it from another angle, the way a real interviewer would.
             </p>
-          </div>
-          <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-label="Example exchange">
-            <Turn who="them" level={2}>Your resume mentions PostgreSQL. Two transactions update the same row and one update is lost. What happened?</Turn>
-            <Turn who="you">Both read the old value before either wrote, so the second overwrote the first. I’d lock the row with SELECT … FOR UPDATE.</Turn>
-            <Turn who="them" level={3}>Good. Now say you can’t hold locks that long. What catches it instead?</Turn>
-          </div>
+          </Reveal>
+          <Stagger className="panel glass" gap={0.5} delay={0.15} amount={0.4} style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-label="Example exchange">
+            <StaggerItem style={{ display: 'flex', flexDirection: 'column' }}>
+              <Turn who="them" level={2}>Your resume mentions PostgreSQL. Two transactions update the same row and one update is lost. What happened?</Turn>
+            </StaggerItem>
+            <StaggerItem style={{ display: 'flex', flexDirection: 'column' }}>
+              <Turn who="you">Both read the old value before either wrote, so the second overwrote the first. I’d lock the row with SELECT … FOR UPDATE.</Turn>
+            </StaggerItem>
+            <StaggerItem style={{ display: 'flex', flexDirection: 'column' }}>
+              <Turn who="them" level={3}>Good. Now say you can’t hold locks that long. What catches it instead?</Turn>
+            </StaggerItem>
+          </Stagger>
         </div>
       </section>
 
       <section id="roles" className="section" style={{ paddingTop: 0 }}>
         <div className="container">
-          <div className="section-head center">
+          <Reveal className="section-head center">
             <h2>Built for the role you want</h2>
             <p className="section-lede">Role questions and follow-ups change with your pick. Not listed? Type your own.</p>
-          </div>
-          <ul className="role-list">
-            {ROLES.map(r => <li key={r}>{r}</li>)}
-          </ul>
+          </Reveal>
+          <Stagger as="ul" className="role-list" gap={0.05}>
+            {ROLES.map(r => <StaggerItem as="li" key={r} y={14} className="glass-pill">{r}</StaggerItem>)}
+          </Stagger>
         </div>
       </section>
 
-      <section className="closing">
-        <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+      <section className="closing" ref={closingRef}>
+        <Reveal className="container" style={{ position: 'relative', zIndex: 1 }}>
           <h2>Make your next interview a rehearsal.</h2>
           <p>Free. All you need is a PDF of your resume.</p>
           <Link to={startHref} className="btn btn-primary btn-lg">{startLabel}</Link>
-        </div>
-        <Eclipse />
+        </Reveal>
+        <motion.div className="closing-planet" style={reduce ? undefined : { y: planetY }}>
+          <Eclipse />
+        </motion.div>
       </section>
 
       <footer className="landing-footer">
@@ -220,6 +267,7 @@ export default function Landing() {
           <span>© 2026 InterviewAI</span>
         </div>
       </footer>
+      </div>
     </div>
   )
 }

@@ -129,7 +129,7 @@ export default function Dashboard() {
                   <RadarChart data={radarData}>
                     <PolarGrid stroke="#30333A" />
                     <PolarAngleAxis dataKey="topic" tick={{ fill: '#A3A3AD', fontSize: 12 }} />
-                    <Radar name="Score" dataKey="score" stroke="#FF8240" strokeWidth={2} fill="#FF6A2B" fillOpacity={0.22} />
+                    <Radar name="Score" dataKey="score" stroke="#ECECF1" strokeWidth={2} fill="#D4D4DA" fillOpacity={0.22} />
                   </RadarChart>
                 </ResponsiveContainer>
               </div>
@@ -154,9 +154,9 @@ export default function Dashboard() {
                     labelFormatter={(v) => `Interview ${v}`}
                   />
                   <Area
-                    type="linear" dataKey="score" stroke="#FF8240" fill="#FF6A2B" fillOpacity={0.1} strokeWidth={2}
-                    dot={{ r: 3, fill: '#FF8240', strokeWidth: 0 }}
-                    activeDot={{ r: 6, fill: '#FFB15C', stroke: '#000000', strokeWidth: 2 }}
+                    type="linear" dataKey="score" stroke="#ECECF1" fill="#D4D4DA" fillOpacity={0.1} strokeWidth={2}
+                    dot={{ r: 3, fill: '#ECECF1', strokeWidth: 0 }}
+                    activeDot={{ r: 6, fill: '#F4F4F6', stroke: '#000000', strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
